@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CluedIn.QualityAssurance.Cli": {
+      "commandName": "Project",
+      "commandLineArgs": "validate-edge-creation --cluesfolder c:\\temp\\subsetclues2_trim --outputdirectory c:\\\\temp\\\\edge-testing"
+    }
+  }
+}
