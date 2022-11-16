@@ -35,16 +35,19 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
 
     public override async Task ExecuteAsync(ValidateEdgeCreationOptions options, CancellationToken cancellationToken)
     {
+        var nowInTicks = DateTime.Now.Ticks;
+        var outputFolder = Path.Combine(options.OutputDirectory, nowInTicks.ToString());
+
         for (int i = 0; i < options.Iterations; i++)
         {
-            await Run(options, cancellationToken);
+            await Run(options, cancellationToken, outputFolder);
 
             if (cancellationToken.IsCancellationRequested)
                 return;
         }
     }
 
-    private async Task Run(ValidateEdgeCreationOptions options, CancellationToken cancellationToken)
+    private async Task Run(ValidateEdgeCreationOptions options, CancellationToken cancellationToken, string outputFolder)
     {
         var files = Directory.GetFiles(options.CluesFolder, "*.xml").OrderBy(x => x).ToArray();
 
@@ -54,7 +57,6 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
 
         var org = $"myorg{nowInTicks}";
         var adminEmail = $"admin@{org}.com";
-        var outputFolder = Path.Combine(options.OutputDirectory, nowInTicks.ToString());
 
         Directory.CreateDirectory(outputFolder);
 
