@@ -213,7 +213,7 @@ WHERE type(e) <> '/Code'
 AND type(e) <> '/DiscoveredAt'
 AND type(e) <> '/ModifiedAt'
 AND n.`Attribute-origin` STARTS WITH '{org}'
-RETURN n.`Attribute-origin` AS source, type(e) AS type, r.`Attribute-origin` AS destination
+RETURN head(n.Codes) AS source, type(e) AS type, head(r.Codes) AS destination
 ORDER BY source, type, destination";
 
             using (var session = driver.AsyncSession())
