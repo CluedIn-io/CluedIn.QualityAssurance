@@ -129,6 +129,11 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
 
             var clue = xmlDoc.SelectSingleNode("/clue");
 
+            //foreach (var node in xmlDoc.SelectNodes("//entityData/name").OfType<XmlNode>())
+            //{
+            //    node.InnerText += idSuffix;
+            //}
+
             clue.Attributes["organization"].Value = organisationId;
 
             foreach (var node in xmlDoc.SelectNodes("//codes/value").OfType<XmlNode>())
@@ -147,6 +152,14 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
                 node.Attributes["origin"].Value += idSuffix;
             }
 
+            //var entityData = xmlDoc.SelectSingleNode("//data//entityData");
+
+            //var modifiedDate = xmlDoc.CreateElement("modifiedDate");
+            //modifiedDate.InnerText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.ffff");
+            //Thread.Sleep(10);
+
+            //entityData.AppendChild(modifiedDate);
+
             xml = xmlDoc.OuterXml;
 
 
@@ -155,6 +168,8 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
             request.AddParameter("save", "true", ParameterType.QueryString);
             request.AddParameter("bearer", token, ParameterType.QueryString);
             request.AddParameter("text/xml", xml, ParameterType.RequestBody);
+
+            //Thread.Sleep(5000);
 
             await client.ExecuteAsync(request);
 
@@ -176,6 +191,9 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         var deadLetterQueueRequest =
             new RestRequest(
                 $"{options.RabbitMQAdminUrl}api/queues/%2F/DeadLetterCommands?lengths_age=600&lengths_incr=5&msg_rates_age=600&msg_rates_incr=5&data_rates_age=600&data_rates_incr=5");
+        var errorrQueueRequest =
+            new RestRequest(
+                $"{options.RabbitMQAdminUrl}api/queues/%2F/EasyNetQ_Default_Error_Queue?lengths_age=600&lengths_incr=5&msg_rates_age=600&msg_rates_incr=5&data_rates_age=600&data_rates_incr=5");
         var queueRequest =
             new RestRequest(
                 $"{options.RabbitMQAdminUrl}api/overview?lengths_age=600&lengths_incr=5&msg_rates_age=600&msg_rates_incr=5");
@@ -183,6 +201,7 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         _logger.LogInformation("Waiting for messages to arrive in rabbitmq");
         RabbitOverview rabbitOverview;
         RabbitQueue deadLetterQueue;
+        RabbitQueue errorQueue;
 
         int i = 0;
         do
@@ -190,10 +209,11 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
             Thread.Sleep(1000);
             rabbitOverview = rabbitClient.Execute<RabbitOverview>(queueRequest).Data;
             deadLetterQueue = rabbitClient.Execute<RabbitQueue>(deadLetterQueueRequest).Data;
+            errorQueue = rabbitClient.Execute<RabbitQueue>(errorrQueueRequest).Data;
 
             if (cancellationToken.IsCancellationRequested)
                 return;
-        } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len <= 0 && i++ < 60);
+        } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len - (errorQueue.BackingQueueStatus?.Len ?? 0l) <= 0 && i++ < 60);
 
         _logger.LogInformation("Waiting for all messages to be processed in rabbitmq");
         do
@@ -201,10 +221,11 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
             Thread.Sleep(1000);
             rabbitOverview = rabbitClient.Execute<RabbitOverview>(queueRequest).Data;
             deadLetterQueue = rabbitClient.Execute<RabbitQueue>(deadLetterQueueRequest).Data;
+            errorQueue = rabbitClient.Execute<RabbitQueue>(errorrQueueRequest).Data;
 
             if (cancellationToken.IsCancellationRequested)
                 return;
-        } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len > 0);
+        } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len - (errorQueue.BackingQueueStatus?.Len ?? 0l) > 0);
 
         _logger.LogInformation("Fetching edge data from neo");
         var driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
