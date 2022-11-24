@@ -236,7 +236,7 @@ WHERE type(e) <> '/Code'
 AND type(e) <> '/DiscoveredAt'
 AND type(e) <> '/ModifiedAt'
 AND n.`Attribute-origin` STARTS WITH '{org}'
-RETURN head(n.Codes) AS source, type(e) AS type, head(r.Codes) AS destination
+RETURN n.Codes AS source, type(e) AS type, r.Codes AS destination
 ORDER BY source, type, destination";
 
             using (var session = driver.AsyncSession())
@@ -246,9 +246,9 @@ ORDER BY source, type, destination";
                     var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
                     var resultList = await result.ToListAsync();
                     var resultObjectList = resultList.Select(currentResult => new Result(
-                            RemapCode(currentResult.Values["source"].ToString(), org),
+                            RemapCode(SortedHead((List<object>)currentResult.Values["source"]), org),
                             currentResult.Values["type"].ToString(),
-                            RemapCode(currentResult.Values["destination"].ToString(), org)))
+                            RemapCode(SortedHead((List<object>)currentResult.Values["destination"]), org)))
                         .Where(x => !x.source.Contains("#CluedIn"))
                         .Distinct()
                         .OrderBy(x => x.source)
@@ -331,6 +331,13 @@ ORDER BY source, type, destination";
         s = Regex.Replace(s, "-testrun.*", "");
 
         return s;
+    }
+
+    static string SortedHead(object o)
+    {
+        var list = ((List<object>)o).Select(x => x.ToString());
+
+        return list.OrderBy(x => x).First();
     }
 
     public record Result(string source, string type, string destination);
