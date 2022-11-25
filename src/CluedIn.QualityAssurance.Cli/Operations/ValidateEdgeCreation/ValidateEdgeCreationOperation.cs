@@ -18,14 +18,14 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ValidateEdgeCreation;
 internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOptions>
 {
     private readonly ILogger<ValidateEdgeCreationOperation> _logger;
-    private static Dictionary<string, int> HashFileCounts { get; set; } = new();
-    private static List<OrganizationEdgeDetails> OrganizationIdToHash { get; set; } = new();
+    private static List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
 
     class OrganizationEdgeDetails
     {
         public string OrganizationId { get; set; }
         public string EdgeHash { get; set; }
         public int NumberOfEdges { get; set; }
+        public TimeSpan TimeToProcess { get; set; }
     }
 
     public ValidateEdgeCreationOperation(ILogger<ValidateEdgeCreationOperation> logger)
@@ -115,6 +115,8 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         }
 
         _logger.LogInformation("Sending clues");
+
+        var startedAt = DateTime.Now;
 
         var d = DateTime.Now;
         int idx;
@@ -227,6 +229,8 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
                 return;
         } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len - (errorQueue.BackingQueueStatus?.Len ?? 0l) > 0);
 
+        var timeTaken = DateTime.Now.Subtract(startedAt);
+
         _logger.LogInformation("Fetching edge data from neo");
         var driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
 
@@ -279,20 +283,12 @@ ORDER BY source, type, destination";
                         File.Copy(outputCsvFileName, hashFileName);
                     }
 
-                    if (!HashFileCounts.ContainsKey(sHash))
-                    {
-                        HashFileCounts.Add(sHash, 1);
-                    }
-                    else
-                    {
-                        HashFileCounts[sHash] += 1;
-                    }
-
-                    OrganizationIdToHash.Add(new OrganizationEdgeDetails
+                    OrganizationResults.Add(new OrganizationEdgeDetails
                     {
                         OrganizationId = organisationId,
                         EdgeHash = sHash,
                         NumberOfEdges = resultObjectList.Length,
+                        TimeToProcess = timeTaken,
                     });
                 });
             }
@@ -311,18 +307,25 @@ ORDER BY source, type, destination";
             }
         }
 
-        Console.WriteLine(JsonConvert.SerializeObject(HashFileCounts, Newtonsoft.Json.Formatting.Indented));
+        var summary = (from r in OrganizationResults
+            group r by r.EdgeHash
+            into g
+            select new
+            {
+                Hash = g.Key,
+                NumberOfOccurances = g.Count(),
+                AverageProcessingTime = TimeSpan.FromTicks(g.Select(x => x.TimeToProcess.Ticks).Sum() / g.Count()),
+                NumberOfEdges = g.Select(x => x.NumberOfEdges).Sum() / (double)g.Count(), // all counts should be the same for a given hash, lets average however just incase
+            }).ToArray();
+
+        Console.WriteLine(JsonConvert.SerializeObject(summary.ToDictionary(x => x.Hash, x => x.NumberOfOccurances),
+            Newtonsoft.Json.Formatting.Indented));
 
         File.WriteAllText($"{outputFolder}\\results.json", JsonConvert.SerializeObject(new
         {
-            EdgeSummary = HashFileCounts.Select(x => new
-            {
-                EdgeHash = x.Key,
-                NumberOfOccurances = x.Value
-            }).ToList(),
-            OrganizationDetails = OrganizationIdToHash
-        },
-            Newtonsoft.Json.Formatting.Indented));
+            Summary = summary,
+            OrganizationDetails = OrganizationResults
+        }, Newtonsoft.Json.Formatting.Indented));
     }
 
     static string RemapCode(string s, string orgName)
