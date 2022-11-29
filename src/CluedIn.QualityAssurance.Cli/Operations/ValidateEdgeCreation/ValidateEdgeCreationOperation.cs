@@ -1,14 +1,9 @@
-﻿using System.Globalization;
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
-using System.Web;
-using System.Xml;
+﻿using System.Xml;
 using CluedIn.QualityAssurance.Cli.Models.CluedIn;
 using CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Operations.VerifyEdges;
-using CsvHelper;
+using CluedIn.QualityAssurance.Cli.Services;
 using Microsoft.Extensions.Logging;
-using Neo4j.Driver;
 using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
@@ -18,19 +13,13 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ValidateEdgeCreation;
 internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOptions>
 {
     private readonly ILogger<ValidateEdgeCreationOperation> _logger;
-    private static List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
+    private readonly ILoggerFactory _loggerFactory;
+    private EdgeExporter _edgeExporter;
 
-    class OrganizationEdgeDetails
+    public ValidateEdgeCreationOperation(ILogger<ValidateEdgeCreationOperation> logger, ILoggerFactory loggerFactory)
     {
-        public string OrganizationId { get; set; }
-        public string EdgeHash { get; set; }
-        public int NumberOfEdges { get; set; }
-        public TimeSpan TimeToProcess { get; set; }
-    }
-
-    public ValidateEdgeCreationOperation(ILogger<ValidateEdgeCreationOperation> logger)
-    {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
 
     public override async Task ExecuteAsync(ValidateEdgeCreationOptions options, CancellationToken cancellationToken)
@@ -38,6 +27,7 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         var nowInTicks = DateTime.Now.Ticks;
         var outputFolder = Path.Combine(options.OutputDirectory, nowInTicks.ToString());
 
+        _edgeExporter = new EdgeExporter(_loggerFactory.CreateLogger<EdgeExporter>(), outputFolder);
         for (int i = 0; i < options.Iterations; i++)
         {
             await Run(options, cancellationToken, outputFolder);
@@ -117,7 +107,6 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         _logger.LogInformation("Sending clues");
 
         var startedAt = DateTime.Now;
-
         var d = DateTime.Now;
         int idx;
         for (idx = 0; idx < files.Length; idx++)
@@ -230,69 +219,12 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         } while (rabbitOverview.QueueTotals.Messages - deadLetterQueue.BackingQueueStatus.Len - (errorQueue.BackingQueueStatus?.Len ?? 0l) > 0);
 
         var timeTaken = DateTime.Now.Subtract(startedAt);
-
-        _logger.LogInformation("Fetching edge data from neo");
-        var driver = GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
-
+        var mapping = new Dictionary<string, string>
         {
-            var query = $@"MATCH (n)-[e]->(r) 
-WHERE type(e) <> '/Code'
-AND type(e) <> '/DiscoveredAt'
-AND type(e) <> '/ModifiedAt'
-AND n.`Attribute-origin` STARTS WITH '{org}'
-RETURN n.Codes AS source, type(e) AS type, r.Codes AS destination
-ORDER BY source, type, destination";
-
-            using (var session = driver.AsyncSession())
-            {
-                await session.ExecuteReadAsync(async tx =>
-                {
-                    var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
-                    var resultList = await result.ToListAsync();
-                    var resultObjectList = resultList.Select(currentResult => new Result(
-                            RemapCode(SortedHead((List<object>)currentResult.Values["source"]), org),
-                            currentResult.Values["type"].ToString(),
-                            RemapCode(SortedHead((List<object>)currentResult.Values["destination"]), org)))
-                        .Where(x => !x.source.Contains("#CluedIn"))
-                        .Distinct()
-                        .OrderBy(x => x.source)
-                        .ThenBy(x => x.type)
-                        .ThenBy(x => x.destination)
-                        .ToArray();
-
-                    var outputCsvFileName = $"{outputFolder}\\edges-{org}.csv";
-
-                    using (var writer = new StreamWriter(outputCsvFileName))
-                    using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-                    {
-                        csv.WriteRecords(resultObjectList);
-                    }
-
-                    byte[] hash;
-                    using (var md5 = MD5.Create())
-                    using (var stream = File.OpenRead(outputCsvFileName))
-                    {
-                        hash = md5.ComputeHash(stream);
-                    }
-
-                    var sHash = HttpUtility.UrlEncode(Convert.ToBase64String(hash));
-                    var hashFileName = $"{outputFolder}\\edges-{sHash}.csv";
-
-                    if (!File.Exists(hashFileName))
-                    {
-                        File.Copy(outputCsvFileName, hashFileName);
-                    }
-
-                    OrganizationResults.Add(new OrganizationEdgeDetails
-                    {
-                        OrganizationId = organisationId,
-                        EdgeHash = sHash,
-                        NumberOfEdges = resultObjectList.Length,
-                        TimeToProcess = timeTaken,
-                    });
-                });
-            }
-        }
+            [$"^{org}~"] = "",
+            ["-testrun.*"] = ""
+        };
+        await _edgeExporter.ExportEdges(org, organisationId, timeTaken, mapping).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(options.ServerLogFile))
         {
@@ -307,41 +239,9 @@ ORDER BY source, type, destination";
             }
         }
 
-        var summary = (from r in OrganizationResults
-            group r by r.EdgeHash
-            into g
-            select new
-            {
-                Hash = g.Key,
-                NumberOfOccurances = g.Count(),
-                AverageProcessingTime = TimeSpan.FromTicks(g.Select(x => x.TimeToProcess.Ticks).Sum() / g.Count()),
-                NumberOfEdges = g.Select(x => x.NumberOfEdges).Sum() / (double)g.Count(), // all counts should be the same for a given hash, lets average however just incase
-            }).ToArray();
-
-        Console.WriteLine(JsonConvert.SerializeObject(summary.ToDictionary(x => x.Hash, x => x.NumberOfOccurances),
-            Newtonsoft.Json.Formatting.Indented));
-
-        File.WriteAllText($"{outputFolder}\\results.json", JsonConvert.SerializeObject(new
-        {
-            Summary = summary,
-            OrganizationDetails = OrganizationResults
-        }, Newtonsoft.Json.Formatting.Indented));
+        Console.WriteLine(
+            JsonConvert.SerializeObject(
+                _edgeExporter.Summary.ToDictionary(x => x.Hash, x => x.NumberOfOccurances),
+                Newtonsoft.Json.Formatting.Indented));
     }
-
-    static string RemapCode(string s, string orgName)
-    {
-        s = Regex.Replace(s, $"^{orgName}~", "");
-        s = Regex.Replace(s, "-testrun.*", "");
-
-        return s;
-    }
-
-    static string SortedHead(object o)
-    {
-        var list = ((List<object>)o).Select(x => x.ToString());
-
-        return list.OrderBy(x => x).First();
-    }
-
-    public record Result(string source, string type, string destination);
 }
