@@ -2,7 +2,7 @@
   "profiles": {
     "CluedIn.QualityAssurance.Cli": {
       "commandName": "Project",
-      "commandLineArgs": "validate-edge-creation --cluesfolder c:\\temp\\subsetreducednoedgeproperty --outputdirectory c:\\\\temp\\\\edge-testing"
+      "commandLineArgs": "validate-edge-creation --cluesfolder c:\\temp\\subsetclues2_trim --outputdirectory c:\\\\temp\\\\edge-testing"
     },
     "VerifyEdge": {
       "commandName": "Project",
