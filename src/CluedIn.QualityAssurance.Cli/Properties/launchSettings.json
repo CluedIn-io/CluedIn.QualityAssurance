@@ -2,11 +2,15 @@
   "profiles": {
     "CluedIn.QualityAssurance.Cli": {
       "commandName": "Project",
-      "commandLineArgs": "validate-edge-creation --cluesfolder c:\\temp\\subsetclues2_trim --outputdirectory c:\\\\temp\\\\edge-testing"
+      "commandLineArgs": "validate-edge-creation --cluesfolder c:\\temp\\subsetclues2_trim --outputdirectory c:\\temp\\edge-testing"
     },
     "VerifyEdge": {
       "commandName": "Project",
       "commandLineArgs": "verify-edge --cluesfolder c:\\temp\\subsetreducednoedgeproperty --outputfile c:\\temp\\verify-edge.csv --organizationname myorg638042960857214014 --idsuffix=-testrun-5c4ffa08-1fe2-46e2-bea9-7c88c178cab6"
+    },
+    "ExtractEdge": {
+      "commandName": "Project",
+      "commandLineArgs": "extract-edge --outputdirectory c:\\temp\\extract-edge --organizationnames myorg638053435637107275 --mappings ^{org}~=,-testrun.*="
     }
   }
 }

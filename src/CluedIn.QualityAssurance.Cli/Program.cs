@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using CluedIn.QualityAssurance.Cli.Operations;
+using CluedIn.QualityAssurance.Cli.Services;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ class Program
                 if (Debugger.IsAttached)
                     builder.AddConsole();
             })
+            .AddTransient<EdgeExporter>()
             .BuildServiceProvider();
 
         var logger = serviceProvider.GetService<ILogger<Program>>();

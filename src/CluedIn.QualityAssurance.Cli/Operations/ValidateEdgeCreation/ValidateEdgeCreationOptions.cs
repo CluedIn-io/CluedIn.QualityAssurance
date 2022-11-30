@@ -31,6 +31,12 @@ internal class ValidateEdgeCreationOptions
     [Option(Default = "bolt://localhost:7687")]
     public string Neo4jUrl { get; set; }
 
+    [Option(Default = "neo4j")]
+    public string Neo4jUsername { get; set; }
+
+    [Option(Default = "password")]
+    public string Neo4jPassword { get; set; }
+
     [Option(Required = true)]
     [DirectoryExists]
     public string CluesFolder { get; set; }
