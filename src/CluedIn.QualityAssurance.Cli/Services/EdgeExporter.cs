@@ -13,19 +13,16 @@ public class EdgeExporter
 {
     private ILogger<EdgeExporter> _logger;
     private string _outputFolder;
+    private string _neo4jUserName;
+    private string _neo4jPassword;
+    private string _neo4jUri;
 
     public List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
     internal EdgeSummary[] Summary { get; private set; }
 
-    public EdgeExporter(ILogger<EdgeExporter> logger, string outputFolder)
+    public EdgeExporter(ILogger<EdgeExporter> logger)
     {
-        if (string.IsNullOrEmpty(outputFolder))
-        {
-            throw new ArgumentException($"'{nameof(outputFolder)}' cannot be null or empty.", nameof(outputFolder));
-        }
-
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _outputFolder = outputFolder;
     }
 
     public class OrganizationEdgeDetails
@@ -34,6 +31,18 @@ public class EdgeExporter
         public string EdgeHash { get; set; }
         public int NumberOfEdges { get; set; }
         public TimeSpan TimeToProcess { get; set; }
+    }
+
+    public void Initialize(string outputFolder, string neo4jUri, string neo4jUserName, string neo4jPassword)
+    {
+        if (string.IsNullOrEmpty(outputFolder))
+        {
+            throw new ArgumentException($"'{nameof(outputFolder)}' cannot be null or empty.", nameof(outputFolder));
+        }
+        _outputFolder = outputFolder;
+        _neo4jUri = neo4jUri;
+        _neo4jUserName = neo4jUserName;
+        _neo4jPassword = neo4jPassword;
     }
 
     public async Task ExportEdges(string organizationName, Dictionary<string, string> mapping)
@@ -170,9 +179,9 @@ ORDER BY source, type, destination";
         }
     }
 
-    private static IDriver CreateDriver()
+    private IDriver CreateDriver()
     {
-        return GraphDatabase.Driver("bolt://localhost:7687", AuthTokens.Basic("neo4j", "password"));
+        return GraphDatabase.Driver(_neo4jUri, AuthTokens.Basic(_neo4jUserName, _neo4jPassword));
     }
 
     private static string RemapCode(string s, Dictionary<string, string> mapping)

@@ -16,10 +16,10 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
     private readonly ILoggerFactory _loggerFactory;
     private EdgeExporter _edgeExporter;
 
-    public ValidateEdgeCreationOperation(ILogger<ValidateEdgeCreationOperation> logger, ILoggerFactory loggerFactory)
+    public ValidateEdgeCreationOperation(ILogger<ValidateEdgeCreationOperation> logger, EdgeExporter edgeExporter)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _edgeExporter = edgeExporter ?? throw new ArgumentNullException(nameof(edgeExporter));
     }
 
     public override async Task ExecuteAsync(ValidateEdgeCreationOptions options, CancellationToken cancellationToken)
@@ -27,7 +27,8 @@ internal class ValidateEdgeCreationOperation : Operation<ValidateEdgeCreationOpt
         var nowInTicks = DateTime.Now.Ticks;
         var outputFolder = Path.Combine(options.OutputDirectory, nowInTicks.ToString());
 
-        _edgeExporter = new EdgeExporter(_loggerFactory.CreateLogger<EdgeExporter>(), outputFolder);
+        _edgeExporter.Initialize(outputFolder, options.Neo4jUrl, options.Neo4jUsername, options.Neo4jPassword);
+
         for (int i = 0; i < options.Iterations; i++)
         {
             await Run(options, cancellationToken, outputFolder);
