@@ -39,6 +39,22 @@ public class EdgeExporter
         {
             throw new ArgumentException($"'{nameof(outputFolder)}' cannot be null or empty.", nameof(outputFolder));
         }
+
+        if (string.IsNullOrWhiteSpace(neo4jUri))
+        {
+            throw new ArgumentException($"'{nameof(neo4jUri)}' cannot be null or whitespace.", nameof(neo4jUri));
+        }
+
+        if (string.IsNullOrWhiteSpace(neo4jUserName))
+        {
+            throw new ArgumentException($"'{nameof(neo4jUserName)}' cannot be null or whitespace.", nameof(neo4jUserName));
+        }
+
+        if (string.IsNullOrWhiteSpace(neo4jPassword))
+        {
+            throw new ArgumentException($"'{nameof(neo4jPassword)}' cannot be null or whitespace.", nameof(neo4jPassword));
+        }
+
         _outputFolder = outputFolder;
         _neo4jUri = neo4jUri;
         _neo4jUserName = neo4jUserName;
