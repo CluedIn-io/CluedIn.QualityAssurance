@@ -183,6 +183,7 @@ ORDER BY source, type, destination";
                         currentResult.Values["type"].ToString(),
                         RemapCode(SortedHead((List<object>)currentResult.Values["destination"]), mapping)))
                     .Where(x => !x.source.Contains("#CluedIn"))
+                    .Where(x => !x.destination.Contains("/Provider/Root"))
                     .Distinct()
                     .OrderBy(x => x.source)
                     .ThenBy(x => x.type)
