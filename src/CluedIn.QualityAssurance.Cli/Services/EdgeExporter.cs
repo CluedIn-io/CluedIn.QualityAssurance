@@ -75,11 +75,11 @@ public class EdgeExporter
     {
         var edges = await GetEdgesFromNeo(organizationName, mapping).ConfigureAwait(false);
 
-        var outputCsvFileName = $"{_outputFolder}\\edges-{organizationName}.csv";
+        var outputCsvFileName = Path.Combine(_outputFolder, $"edges-{organizationName}.csv");
         await ExportToCsv(outputCsvFileName, edges).ConfigureAwait(false);
 
         var sHash = await CalculateFileHash(outputCsvFileName).ConfigureAwait(false);
-        var outputHashCsvFileName = $"{_outputFolder}\\edges-{sHash}.csv";
+        var outputHashCsvFileName = Path.Combine(_outputFolder, $"edges-{sHash}.csv");
         CreateHashCsvIfNotExists(outputCsvFileName, outputHashCsvFileName);
 
         AddHash(organizationId, edges, sHash, timeTaken);
@@ -100,7 +100,7 @@ public class EdgeExporter
         };
 
         await File.WriteAllTextAsync(
-            $"{_outputFolder}\\results.json",
+            Path.Combine(_outputFolder, "results.json"),
             JsonConvert.SerializeObject(allResult, Formatting.Indented))
             .ConfigureAwait(false);
     }
