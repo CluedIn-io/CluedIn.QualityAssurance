@@ -1,0 +1,7 @@
+{
+  "operationName": "commitDataSet",
+  "variables": {
+    "dataSetId": "{{DataSetId}}"
+  },
+  "query": "mutation commitDataSet($dataSetId: ID) {\n  inbound {\n    commitDataSet(dataSetId: $dataSetId)\n    __typename\n  }\n}\n"
+}

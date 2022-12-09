@@ -1,26 +1,32 @@
-﻿using CluedIn.QualityAssurance.Cli.Validators;
+﻿using CluedIn.QualityAssurance.Cli.Environments;
+using CluedIn.QualityAssurance.Cli.Validators;
 using CommandLine;
+using Microsoft.Extensions.Logging;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.VerifyEdge;
 
-[Verb("verify-edge", HelpText = "Verify edges from clues folder with edges in Neo4j")]
-internal class VerifyEdgeOptions
+[Neo4jServerValid]
+[Verb("verify-edge", HelpText = "Verify edges from clues directory with edges in Neo4j")]
+internal class VerifyEdgeOptions : IOperationOptions, ILocalNeo4jOptions
 {
-    [AbsoluteUri]
-    [RoutableUri]
-    [Option(Default = "bolt://localhost:7687")]
-    public string Neo4jUrl { get; set; }
+    public string Neo4jBoltUri { get; set; }
 
-    [Option(Required = true)]
+    public string Neo4jUserName { get; set; }
+
+    public string Neo4jUserPassword { get; set; }
+
+    [Option("clues-directory", Required = true)]
     [DirectoryExists]
-    public string CluesFolder { get; set; }
+    public string CluesDirectory { get; set; }
 
-    [Option(Required = true)]
+    [Option("organization-name", Required = true)]
     public string OrganizationName { get; set; }
 
-    [Option(Required = true)]
+    [Option("output-file", Required = true)]
     public string OutputFile { get; set; }
 
-    [Option(Required = true)]
+    [Option("id-suffix", Required = true)]
     public string IdSuffix { get; set; }
+
+    public LogLevel LogLevel { get; set; }
 }

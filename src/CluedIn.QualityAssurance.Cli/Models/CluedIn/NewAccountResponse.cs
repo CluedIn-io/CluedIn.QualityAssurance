@@ -1,7 +1,6 @@
-﻿namespace CluedIn.QualityAssurance.Cli.Models.CluedIn
+﻿namespace CluedIn.QualityAssurance.Cli.Models.CluedIn;
+
+internal class NewAccountResponse
 {
-    internal class NewAccountResponse
-    {
-        public string Id { get; set; }
-    }
+    public string Id { get; set; }
 }

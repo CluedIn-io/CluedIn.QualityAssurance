@@ -1,0 +1,10 @@
+{
+  "operationName": "modifyAnnotation",
+  "variables": {
+    "annotation": {
+      "id": "{{AnnotationId}}",
+      "originEntityCodeKey": "--auto-generated--"
+    }
+  },
+  "query": "mutation modifyAnnotation($annotation: InputEntityAnnotation) {\n  preparation {\n    modifyAnnotation(annotation: $annotation)\n    __typename\n  }\n}\n"
+}

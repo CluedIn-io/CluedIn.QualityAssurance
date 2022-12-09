@@ -1,30 +1,32 @@
-﻿using CluedIn.QualityAssurance.Cli.Validators;
+﻿using CluedIn.QualityAssurance.Cli.Environments;
+using CluedIn.QualityAssurance.Cli.Validators;
 using CommandLine;
+using Microsoft.Extensions.Logging;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ExtractEdge;
 
+[Neo4jServerValid]
 [Verb("extract-edge", HelpText = "Extract edges from organizations")]
-internal class ExtractEdgeOptions
+internal class ExtractEdgeOptions : IOperationOptions, ILocalNeo4jOptions
 {
-    [AbsoluteUri]
-    [RoutableUri]
-    [Option(Default = "bolt://localhost:7687")]
-    public string Neo4jUrl { get; set; }
+    #region Neo4j
+    public string Neo4jBoltUri { get; set; }
 
-    [Option(Default = "neo4j")]
-    public string Neo4jUsername { get; set; }
+    public string Neo4jUserName { get; set; }
 
-    [Option(Default = "password")]
-    public string Neo4jPassword { get; set; }
+    public string Neo4jUserPassword { get; set; }
+    #endregion
 
-    [Option(Required = true)]
+    [Option("output-directory", Required = true)]
     [DirectoryExists]
     public string OutputDirectory { get; set; }
 
-    [Option(Required = true, Separator =',')]
+    [Option("organization-names", Required = true, Separator =',')]
     public IEnumerable<string> OrganizationNames { get; set; }
 
-    [Option(Required = true, Separator = ',')]
+    [Option("mappings", Required = true, Separator = ',')]
     [KeyValuePairs]
     public IEnumerable<string> Mappings { get; set; }
+
+    public LogLevel LogLevel { get; set; }
 }

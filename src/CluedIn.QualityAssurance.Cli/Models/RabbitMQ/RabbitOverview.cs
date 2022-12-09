@@ -1,10 +1,9 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace CluedIn.QualityAssurance.Cli.Models.RabbitMQ
+namespace CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
+
+internal class RabbitOverview
 {
-    internal class RabbitOverview
-    {
-        [JsonPropertyName("queue_totals")]
-        public QueueTotals QueueTotals { get; set; }
-    }
+    [JsonPropertyName("queue_totals")]
+    public QueueTotals QueueTotals { get; set; }
 }

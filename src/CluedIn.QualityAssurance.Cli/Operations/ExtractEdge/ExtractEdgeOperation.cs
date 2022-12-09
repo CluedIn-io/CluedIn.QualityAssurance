@@ -14,19 +14,30 @@ internal class ExtractEdgeOperation : Operation<ExtractEdgeOptions>
 
     public override async Task ExecuteAsync(ExtractEdgeOptions options, CancellationToken cancellationToken)
     {
-        _edgeExporter.Initialize(options.OutputDirectory, options.Neo4jUrl, options.Neo4jUsername, options.Neo4jPassword);
+        _edgeExporter.Initialize(options.OutputDirectory, options.Neo4jBoltUri, options.Neo4jUserName, options.Neo4jUserPassword);
         var organizationNames = options.OrganizationNames;
+
         foreach (var organizationName in organizationNames)
         {
             var mapping = options.Mappings
                 .Select(keyValuePair => keyValuePair.Split("="))
                 .ToDictionary(keyValuePair => keyValuePair.First(), keyValuePair => keyValuePair.Last());
-            await _edgeExporter.ExportEdges(organizationName, mapping).ConfigureAwait(false);
+            await _edgeExporter.GetEdgeDetailsAsync(organizationName, mapping).ConfigureAwait(false);
         }
         Console.WriteLine(
             JsonConvert.SerializeObject(
                 _edgeExporter.Summary.ToDictionary(x => x.Hash, x => x.NumberOfOccurances),
                 Formatting.Indented));
+        var allResult = new
+        {
+            Summary = _edgeExporter.Summary,
+            OrganizationDetails = _edgeExporter.OrganizationResults,
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(options.OutputDirectory, "results.json"),
+            JsonConvert.SerializeObject(allResult, Formatting.Indented))
+            .ConfigureAwait(false);
     }
 
 }

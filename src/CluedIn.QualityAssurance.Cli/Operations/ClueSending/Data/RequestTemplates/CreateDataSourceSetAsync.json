@@ -1,0 +1,10 @@
+{
+  "operationName": "createDataSourceSet",
+  "variables": {
+    "dataSourceSet": {
+      "name": "My Dataset Name",
+      "author": "{{UserId}}"
+    }
+  },
+  "query": "mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {\n  inbound {\n    createDataSourceSet(dataSourceSet: $dataSourceSet)\n    __typename\n  }\n}\n"
+}

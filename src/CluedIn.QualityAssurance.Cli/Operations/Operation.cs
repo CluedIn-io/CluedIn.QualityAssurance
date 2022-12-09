@@ -1,7 +1,7 @@
-﻿namespace CluedIn.QualityAssurance.Cli.Operations
+﻿namespace CluedIn.QualityAssurance.Cli.Operations;
+
+internal abstract class Operation<TOptions>
+    where TOptions : IOperationOptions
 {
-    internal abstract class Operation<T>
-    {
-        public abstract Task ExecuteAsync(T options, CancellationToken cancellationToken);
-    }
+    public abstract Task ExecuteAsync(TOptions options, CancellationToken cancellationToken);
 }

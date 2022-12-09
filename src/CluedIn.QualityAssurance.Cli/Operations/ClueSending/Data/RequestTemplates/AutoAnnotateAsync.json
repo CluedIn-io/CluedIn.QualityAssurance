@@ -1,0 +1,22 @@
+{
+  "operationName": "createAutoAnnotation",
+  "variables": {
+    "dataSetId": "{{DataSetId}}",
+    "type": "file",
+    "mappingConfiguration": {
+      "entityTypeConfiguration": {
+        "icon": "Linkedin",
+        "new": true,
+        "displayName": "{{EntityType}}",
+        "entityType": "/{{EntityType}}"
+      },
+      "vocabularyConfiguration": {
+        "new": true,
+        "keyPrefix": "{{VocabularyKey}}",
+        "vocabularyName": "{{VocabularyKey}}"
+      }
+    },
+    "isDynamicVocab": true
+  },
+  "query": "mutation createAutoAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {\n  management {\n    createAutoAnnotation(\n      dataSetId: $dataSetId\n      type: $type\n      mappingConfiguration: $mappingConfiguration\n      isDynamicVocab: $isDynamicVocab\n    ) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
+}
