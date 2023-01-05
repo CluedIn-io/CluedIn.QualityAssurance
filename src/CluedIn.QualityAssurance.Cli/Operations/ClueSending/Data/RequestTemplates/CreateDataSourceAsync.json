@@ -1,0 +1,12 @@
+{
+  "operationName": "createDataSource",
+  "variables": {
+    "dataSourceSetId": "{{DataSourceSetId}}",
+    "dataSource": {
+      "author": "{{UserId}}",
+      "type": "endpoint",
+      "name": "MyIngest"
+    }
+  },
+  "query": "mutation createDataSource($dataSourceSetId: ID, $dataSource: InputDataSource) {\n  inbound {\n    createDataSource(dataSourceSetId: $dataSourceSetId, dataSource: $dataSource) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
+}

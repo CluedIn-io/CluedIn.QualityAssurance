@@ -1,0 +1,432 @@
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.8.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" integrity="sha256-xlxh4PaMDyZ72hWQ7f/37oYI0E2PrBbtzi1yhvnG+/E=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+</head>
+<body>
+    <style>
+        .runs-chart {
+            height: 33vh;
+        }
+
+        .queueChartContainer {
+            position: relative;
+            display: block;
+        }
+    </style>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="queueChartContainer col runs-chart">
+                <canvas id="runChart" style="width:100%;height:100%"></canvas>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col comparison-left">
+                <div class="row">
+                    <div class="col">
+                        <select class="comparison-selection" data-comparison-side="Left">
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="messageCountQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="publishedCountQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="acknowledgedCountQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="deliveredOrGetCountQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="messageRateQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="publishedRateQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="acknowledgedRateQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="deliveredOrGetRateQueueChartLeft"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="redeliveredRateQueueChartLeft"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col comparison-right">
+                <div class="row">
+                    <div class="col">
+                        <select class="comparison-selection" data-comparison-side="Right">
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="messageCountQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="publishedCountQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="acknowledgedCountQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="deliveredOrGetCountQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="messageRateQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="publishedRateQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="acknowledgedRateQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="deliveredOrGetRateQueueChartRight"></canvas>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="queueChartContainer">
+                        <canvas id="redeliveredRateQueueChartRight"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+
+        function getData() {
+            return {{JSON_DATA}};
+        }
+
+        function createRunChart() {
+            var jsonData = getData().IterationResults;
+            const ctx = document.getElementById('runChart').getContext('2d');
+            const labels = jsonData.map((iteration, index) => index + 1);
+            const data = {
+                labels: labels,
+                datasets: [{
+                    label: 'Runs',
+                    data: jsonData.map((iteration) => iteration.TotalTimeInSeconds),
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.4
+                }]
+            };
+            const config = {
+                type: 'line',
+                data: data,
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            };
+            const myChart = new Chart(ctx, config);
+        }
+
+        var colors = [
+            "#e41a1c",
+            "#377eb8",
+            "#4daf4a",
+            "#984ea3",
+            "#ff7f00",
+            "#ffff33",
+            "#a65628",
+            "#f781bf",
+            "#999999"
+        ];
+
+        function getShortQueueName(queueName) {
+            if (queueName.startsWith("clue_datasource_process_")) {
+                return "Datasource";
+            }
+            var commaSplit = queueName.split(',');
+            var firstCommaSplit = commaSplit[0];
+
+            var dotSplit = firstCommaSplit.split('.');
+            var lastDotSplit = dotSplit[dotSplit.length - 1];
+
+            return lastDotSplit;
+        }
+
+        function getOptions(result, chartTitle, xTitle, yTitle, xSuggestedMax, ySuggestedMax) {
+            return {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: xTitle
+                        },
+                        min: 0,
+                        suggestedMax: xSuggestedMax
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: yTitle
+                        },
+                        min: 0,
+                        suggestedMax: ySuggestedMax
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartTitle
+                    }
+                }
+            };
+        }
+
+        function populateSelectionDropdown() {
+            var jsonData = getData().IterationResults;
+            var items = jsonData.map((result, resultIndex) => ({
+                text: "Run " + (resultIndex + 1) + " - " + result.TotalTimeInSeconds.toFixed(2) + "s",
+                resultIndex: resultIndex
+            }));
+
+            for (var current of items) {
+                $('.comparison-selection').append($('<option>', {
+                    value: current.resultIndex,
+                    text: current.text
+                }));
+            }
+        }
+
+        function createQueueSideCharts(sideCharts) {
+            var allData = getData().IterationResults;
+            var dropdowns = $(".comparison-selection");
+
+            for (var sideChart of sideCharts) {
+                sideChart.maxXValue = 0;
+                sideChart.maxYValue = 0;
+                sideChart.datasets = {};
+            }
+
+            var minDates = [];
+            for (var i = 0; i < dropdowns.length; ++i) {
+                var currentIndex = $(dropdowns[i]).val();
+                var currentData = allData[currentIndex];
+                var currentMaxDate = undefined;
+                var currentMinDate = Date.now();
+                var pollingHistory = currentData.QueuePollingHistory;
+
+
+                for (var currentQueue of Object.keys(pollingHistory)) {
+                    var firstValue = pollingHistory[currentQueue].HistoricalQueueInfo[0];
+                    for (var currentValue of pollingHistory[currentQueue].HistoricalQueueInfo) {
+                        var pollDate = new Date(currentValue.PolledAt);
+
+                        for (var sideChart of sideCharts) {
+                            var value = sideChart.getValueMethod(currentValue, firstValue);
+                            sideChart.maxYValue = Math.max(sideChart.maxYValue, value);
+                        }
+
+                        if (currentMaxDate == undefined) {
+                            currentMaxDate = pollDate;
+                        }
+
+                        currentMinDate = (currentMinDate < pollDate) ? currentMinDate : pollDate;
+                        currentMaxDate = (currentMaxDate > pollDate) ? currentMaxDate : pollDate;
+                    }
+                }
+
+                var currentMaxX = (currentMaxDate - currentMinDate) / 1000;
+                for (var sideChart of sideCharts) {
+                    sideChart.maxXValue = Math.max(currentMaxX, sideChart.maxXValue);
+                }
+
+                minDates.push(currentMinDate);
+            }
+
+            for (var i = 0; i < dropdowns.length; ++i) {
+                var currentIndex = $(dropdowns[i]).val();
+                var currentData = allData[currentIndex];
+                for (var sideChart of sideCharts) {
+                    sideChart.datasets[i] = [];
+                }
+
+                var pollingHistory = currentData.QueuePollingHistory;
+                var queueIndex = 0;
+                for (var currentQueue of Object.keys(pollingHistory)) {
+
+                    for (var sideChart of sideCharts) {
+                        sideChart.datasets[i].push({
+                            label: pollingHistory[currentQueue].QueueShortName,
+                            fill: false,
+                            borderColor: colors[queueIndex % colors.length],
+                            tension: 0.4,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            data: []
+                        });
+                    }
+
+                    var firstValue = pollingHistory[currentQueue].HistoricalQueueInfo[0];
+                    for (var currentValue of pollingHistory[currentQueue].HistoricalQueueInfo) {
+                        var xValue = ((new Date(currentValue.PolledAt) - minDates[i]) / 1000);
+                        for (var sideChart of sideCharts) {
+                            sideChart.datasets[i][queueIndex].data.push({ x: xValue, y: sideChart.getValueMethod(currentValue, firstValue) });
+                        }
+                    }
+
+                    queueIndex++;
+                }
+            }
+
+            for (var i = 0; i < dropdowns.length; ++i) {
+                var currentIndex = $(dropdowns[i]).val();
+                var side = $(dropdowns[i]).attr('data-comparison-side');
+                for (var sideChart of sideCharts) {
+                    createQueueChart({
+                        id: sideChart.idPrefix + side,
+                        title: sideChart.title,
+                        yTitle: sideChart.yTitle,
+                        maxXValue: sideChart.maxXValue,
+                        maxYValue: sideChart.maxYValue,
+                        datasets: sideChart.datasets[i]
+                    });
+                }
+
+            }
+        }
+
+        function createQueueChart(chart) {
+            const existingChart = Chart.getChart(chart.id);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            const ctx = document.getElementById(chart.id).getContext('2d');
+            const data = {
+                datasets: chart.datasets
+            };
+
+            const config = {
+                type: 'line',
+                data: data,
+                options: getOptions('', chart.title, 'Time', chart.yTitle, chart.maxXValue, chart.maxYValue)
+            };
+
+            myChart = new Chart(ctx, config);
+            myChart.update();
+        }
+
+        function createMessageCharts() {
+            var sideCharts = [
+                {
+                    'idPrefix': 'messageCountQueueChart',
+                    'title': 'Message Count',
+                    'yAxisLabel': 'Count',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Messages.Count
+                },
+                {
+                    'idPrefix': 'publishedCountQueueChart',
+                    'title': 'Message Published',
+                    'yAxisLabel': 'Count',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Published.Count - firstValue.Published.Count
+                },
+                {
+                    'idPrefix': 'acknowledgedCountQueueChart',
+                    'title': 'Message Acknowledged',
+                    'yAxisLabel': 'Count',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Acknowledged.Count - firstValue.Acknowledged.Count
+                },
+                {
+                    'idPrefix': 'deliveredOrGetCountQueueChart',
+                    'title': 'Message Delivered/Get',
+                    'yAxisLabel': 'Count',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.DeliveredOrGet.Count - firstValue.DeliveredOrGet.Count
+                },
+                {
+                    'idPrefix': 'messageRateQueueChart',
+                    'title': 'Message Rate',
+                    'yAxisLabel': 'Rate',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Messages.Rate
+                },
+                {
+                    'idPrefix': 'publishedRateQueueChart',
+                    'title': 'Message Published Rate',
+                    'yAxisLabel': 'Rate',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Published.Rate
+                },
+                {
+                    'idPrefix': 'acknowledgedRateQueueChart',
+                    'title': 'Message Acknowledged Rate',
+                    'yAxisLabel': 'Rate',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Acknowledged.Rate
+                },
+                {
+                    'idPrefix': 'deliveredOrGetRateQueueChart',
+                    'title': 'Message Delivered/Get Rate',
+                    'yAxisLabel': 'Rate',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.DeliveredOrGet.Rate
+                },
+                {
+                    'idPrefix': 'redeliveredRateQueueChart',
+                    'title': 'Message Redelivered Rate',
+                    'yAxisLabel': 'Rate',
+                    'getValueMethod': (currentValue, firstValue) => currentValue.Redelivered.Rate
+                }
+            ];
+
+            createQueueSideCharts(sideCharts);
+        }
+
+        $(function () {
+            createRunChart();
+            populateSelectionDropdown();
+
+            $(".comparison-selection").change(function () {
+                createMessageCharts();
+            });
+
+            createMessageCharts();
+        });
+
+    </script>
+</body>
+</html>

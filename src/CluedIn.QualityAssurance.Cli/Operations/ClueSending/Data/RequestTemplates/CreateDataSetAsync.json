@@ -1,0 +1,28 @@
+{
+  "operationName": "createDataSets",
+  "variables": {
+    "dataSourceId": "{{DataSourceId}}",
+    "dataSets": [
+      {
+        "author": "{{UserId}}",
+        "store": true,
+        "name": "MyIngestEndpointName",
+        "type": "endpoint",
+        "configuration": {
+          "object": {
+            "endPointName": "MyIngestEndpointName",
+            "autoSubmit": false,
+            "entityType": "/{{EntityType}}"
+          },
+          "entityTypeConfiguration": {
+            "icon": "MdHourglassTop",
+            "new": true,
+            "displayName": "{{EntityType}}",
+            "entityType": "/{{EntityType}}"
+          }
+        }
+      }
+    ]
+  },
+  "query": "mutation createDataSets($dataSourceId: ID, $dataSets: [InputDataSet]) {\n  inbound {\n    createDataSets(dataSourceId: $dataSourceId, dataSets: $dataSets) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
+}

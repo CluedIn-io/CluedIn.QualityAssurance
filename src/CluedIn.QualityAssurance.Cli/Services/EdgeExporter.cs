@@ -5,19 +5,18 @@ using System.Web;
 using CsvHelper;
 using Microsoft.Extensions.Logging;
 using Neo4j.Driver;
-using Newtonsoft.Json;
 
 namespace CluedIn.QualityAssurance.Cli.Services;
 
-public class EdgeExporter
+internal class EdgeExporter
 {
     private ILogger<EdgeExporter> _logger;
-    private string _outputFolder;
+    private string _outputDirectory;
     private string _neo4jUserName;
     private string _neo4jPassword;
     private string _neo4jUri;
 
-    public List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
+    internal List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
     internal EdgeSummary[] Summary { get; private set; }
 
     public EdgeExporter(ILogger<EdgeExporter> logger)
@@ -33,11 +32,11 @@ public class EdgeExporter
         public TimeSpan TimeToProcess { get; set; }
     }
 
-    public void Initialize(string outputFolder, string neo4jUri, string neo4jUserName, string neo4jPassword)
+    public void Initialize(string outputDirectory, string neo4jUri, string neo4jUserName, string neo4jPassword)
     {
-        if (string.IsNullOrEmpty(outputFolder))
+        if (string.IsNullOrEmpty(outputDirectory))
         {
-            throw new ArgumentException($"'{nameof(outputFolder)}' cannot be null or empty.", nameof(outputFolder));
+            throw new ArgumentException($"'{nameof(outputDirectory)}' cannot be null or empty.", nameof(outputDirectory));
         }
 
         if (string.IsNullOrWhiteSpace(neo4jUri))
@@ -55,34 +54,41 @@ public class EdgeExporter
             throw new ArgumentException($"'{nameof(neo4jPassword)}' cannot be null or whitespace.", nameof(neo4jPassword));
         }
 
-        _outputFolder = outputFolder;
+        _outputDirectory = outputDirectory;
         _neo4jUri = neo4jUri;
         _neo4jUserName = neo4jUserName;
         _neo4jPassword = neo4jPassword;
     }
 
-    public async Task ExportEdges(string organizationName, Dictionary<string, string> mapping)
+    public async Task<OrganizationEdgeDetails> GetEdgeDetailsAsync(string organizationName, Dictionary<string, string> mapping)
     {
         var organizationId = await GetOrganizationIdFromName(organizationName).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(organizationId))
         {
             throw new InvalidOperationException($"Cannot find OrganizationId from name '{organizationName}'.");
         }
-        await ExportEdges(organizationName, organizationId, default, mapping);
+        return await GetEdgeDetailsAsync(organizationName, organizationId, default, mapping).ConfigureAwait(false);
     }
 
-    public async Task ExportEdges(string organizationName, string organizationId, TimeSpan timeTaken, Dictionary<string, string> mapping)
+    public async Task<OrganizationEdgeDetails> GetEdgeDetailsAsync(string organizationName, string organizationId, TimeSpan timeTaken, Dictionary<string, string> mapping)
     {
         var edges = await GetEdgesFromNeo(organizationName, mapping).ConfigureAwait(false);
 
-        var outputCsvFileName = Path.Combine(_outputFolder, $"edges-{organizationName}.csv");
+        var outputCsvFileName = Path.Combine(_outputDirectory, $"edges-{organizationName}.csv");
         await ExportToCsv(outputCsvFileName, edges).ConfigureAwait(false);
 
         var sHash = await CalculateFileHash(outputCsvFileName).ConfigureAwait(false);
-        var outputHashCsvFileName = Path.Combine(_outputFolder, $"edges-{sHash}.csv");
+        var outputHashCsvFileName = Path.Combine(_outputDirectory, $"edges-{sHash}.csv");
         CreateHashCsvIfNotExists(outputCsvFileName, outputHashCsvFileName);
 
-        AddHash(organizationId, edges, sHash, timeTaken);
+        var details = new OrganizationEdgeDetails
+        {
+            OrganizationId = organizationId,
+            EdgeHash = sHash,
+            NumberOfEdges = edges.Count,
+            TimeToProcess = timeTaken,
+        };
+        OrganizationResults.Add(details);
 
         Summary = (from r in OrganizationResults
                        group r by r.EdgeHash
@@ -93,16 +99,7 @@ public class EdgeExporter
                            TimeSpan.FromTicks(g.Select(x => x.TimeToProcess.Ticks).Sum() / g.Count()),
                            g.Select(x => x.NumberOfEdges).Sum() / (double)g.Count() // all counts should be the same for a given hash, lets average however just incase
                        )).ToArray();
-        var allResult = new
-        {
-            Summary = Summary,
-            OrganizationDetails = OrganizationResults,
-        };
-
-        await File.WriteAllTextAsync(
-            Path.Combine(_outputFolder, "results.json"),
-            JsonConvert.SerializeObject(allResult, Formatting.Indented))
-            .ConfigureAwait(false);
+        return details;
     }
 
     private async Task<string?> GetOrganizationIdFromName(string organizationName)
@@ -121,17 +118,6 @@ RETURN n.Organization AS OrganizationId LIMIT 1";
                 return record?.Values["OrganizationId"]?.ToString();
             });
         }
-    }
-
-    private void AddHash(string organizationId, ICollection<Result> edges, string sHash, TimeSpan timeTaken)
-    {
-        OrganizationResults.Add(new OrganizationEdgeDetails
-        {
-            OrganizationId = organizationId,
-            EdgeHash = sHash,
-            NumberOfEdges = edges.Count,
-            TimeToProcess = timeTaken,
-        });
     }
 
     private void CreateHashCsvIfNotExists(string outputCsvFileName, string outputHashCsvFileName)

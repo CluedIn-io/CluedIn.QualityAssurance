@@ -1,0 +1,8 @@
+{
+  "operationName": "modifyDataSetAutoSubmit",
+  "variables": {
+    "dataSetId": "{{DataSetId}}",
+    "autoSubmit": true
+  },
+  "query": "mutation modifyDataSetAutoSubmit($dataSetId: ID!, $autoSubmit: Boolean) {\n  inbound {\n    modifyDataSetAutoSubmit(dataSetId: $dataSetId, autoSubmit: $autoSubmit)\n    __typename\n  }\n}\n"
+}

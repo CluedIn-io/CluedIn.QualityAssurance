@@ -13,5 +13,5 @@ internal class ImportCluesOptions
 
     [Option(Required = true)]
     [DirectoryExists]
-    public string CluesFolder { get; set; }
+    public string CluesDirectory { get; set; }
 }

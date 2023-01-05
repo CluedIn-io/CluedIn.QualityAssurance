@@ -1,5 +1,4 @@
-﻿using CommandLine;
-using CsvHelper;
+﻿using CsvHelper;
 using Microsoft.Extensions.Logging;
 using Neo4j.Driver;
 using System.Globalization;
@@ -10,8 +9,6 @@ namespace CluedIn.QualityAssurance.Cli.Operations.VerifyEdge;
 internal class VerifyEdgeOperation : Operation<VerifyEdgeOptions>
 {
     private readonly ILogger<VerifyEdgeOperation> _logger;
-    private const string Neo4jUserName = "neo4j";
-    private const string Neo4jPassword = "password";
 
     public VerifyEdgeOperation(ILogger<VerifyEdgeOperation> logger)
     {
@@ -20,14 +17,14 @@ internal class VerifyEdgeOperation : Operation<VerifyEdgeOptions>
 
     public override async Task ExecuteAsync(VerifyEdgeOptions options, CancellationToken cancellationToken)
     {
-        string cluesFolder = options.CluesFolder;
+        string cluesDirectory = options.CluesDirectory;
         string outputFilePath = options.OutputFile;
         string organizationName = options.OrganizationName;
 
         var edgeResult = new List<FileEdge>();
-        var files = Directory.GetFiles(cluesFolder, "*.xml").OrderBy(x => x);
+        var files = Directory.GetFiles(cluesDirectory, "*.xml").OrderBy(x => x);
 
-        var _driver = GraphDatabase.Driver(options.Neo4jUrl , AuthTokens.Basic(Neo4jUserName, Neo4jPassword));
+        var _driver = GraphDatabase.Driver(options.Neo4jBoltUri , AuthTokens.Basic(options.Neo4jUserName, options.Neo4jUserPassword));
 
         var start = DateTime.UtcNow;
         _logger.LogInformation("Begin checking result {StartTime}.", start);
@@ -57,7 +54,7 @@ internal class VerifyEdgeOperation : Operation<VerifyEdgeOptions>
                 WHERE '{from}{options.IdSuffix}' IN n.Codes
                 AND '{to}{options.IdSuffix}' IN m.Codes
                 RETURN COUNT(n) AS total";
-                //                var query = @$"MATCH (n:{organizationName})-[e:`{type}`]->(m:{organizationName})
+                //var query = @$"MATCH (n:{organizationName})-[e:`{type}`]->(m:{organizationName})
                 //WHERE ANY(code in n.Codes WHERE code STARTS WITH '{from}{options.IdSuffix}')
                 //AND ANY(code in m.Codes WHERE code STARTS WITH '{to}options.IdSuffix')
                 //RETURN COUNT(n) AS total";

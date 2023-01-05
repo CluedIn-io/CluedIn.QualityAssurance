@@ -1,0 +1,25 @@
+{
+  "clue": {
+    "attribute-organization": "{{OrganizationId}}",
+    "attribute-origin": "/Organization#CluedIn:{{CurrentClueUuid}}",
+    "attribute-appVersion": "1.8.0.0",
+    "clueDetails": {
+      "data": {
+        "attribute-origin": "/Organization#CluedIn:{{CurrentClueUuid}}",
+        "attribute-appVersion": "1.8.0.0",
+        "attribute-inputSource": "cluedin",
+        "entityData": {
+          "attribute-origin": "/Organization#CluedIn:{{CurrentClueUuid}}",
+          "attribute-appVersion": "1.8.0.0",
+          "attribute-source": "rest",
+          "entityType": "/Organization",
+          "properties": {
+            "property-organization.address": "address test {{CurrentClueCount}}",
+            "property-organization.industry": "industry test {{CurrentClueCount}}"
+          },
+          "name": "Test1-1 iteration-{{CurrentClueCount}}"
+        }
+      }
+    }
+  }
+}
