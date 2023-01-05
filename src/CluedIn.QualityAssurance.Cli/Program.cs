@@ -182,20 +182,20 @@ internal class Program
 
     private static void AddEnvironmentOptions(IServiceCollection services, IClueSendingOperationOptions options)
     {
-        bool IsKubernetesEnvironment(IKubernetesEnvironmentOptions kubernetesOptions)
-        {
-            return kubernetesOptions != null && kubernetesOptions.ContextName != null && kubernetesOptions.Namespace != null;
-        }
 
-        if (options is IKubernetesEnvironmentOptions kubernetesOptions && IsKubernetesEnvironment(kubernetesOptions))
+        if (options is IKubernetesEnvironmentOptions kubernetesOptions && kubernetesOptions.IsKubernetesEnvironment)
         {
             services.AddSingleton<IEnvironment, KubernetesEnvironment>();
             services.AddTransient(_ => Options.Create(kubernetesOptions));
         }
-        else if(options is ILocalEnvironmentOptions localOptions)
+        else if(options is ILocalEnvironmentOptions localOptions && localOptions.IsLocalEnvironment)
         {
             services.AddTransient<IEnvironment, LocalEnvironment>();
             services.AddTransient(_ => Options.Create(localOptions));
+        }
+        else
+        {
+            throw new NotSupportedException("One of the environment must be set.");
         }
     }
 
