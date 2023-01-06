@@ -65,7 +65,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
             //Load the file and set the file's Content-Type header
             var stream = GetUploadFileStream();
             var fileStreamContent = new StreamContent(stream);
-            fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+            fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue(GetMimeType(FileSource.UploadFilePath));
 
             //Add the file
             multipartFormContent.Add(fileStreamContent, name: FileSource.UploadFilePath, fileName: FileSource.UploadFilePath);
@@ -86,6 +86,21 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
 
             FileSource.DataSourceId = dataSourceId.Value;
         }
+    }
+
+    private static string GetMimeType(string filePath)
+    {
+        // TODO: File type detection using magic bytes and then finally fallback to extension
+        var extension = Path.GetExtension(filePath);
+
+        return extension switch
+        {
+            ".csv" => "text/csv",
+            ".json" => "application/json",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            _ => throw new NotSupportedException($"File extension '{extension}' is not supported.")
+        };
     }
 
     private async Task GetDataSetIdAsync(CancellationToken cancellationToken)
