@@ -114,12 +114,12 @@
         "name": "TotalEntities",
         "source": "Neo4j",
         "type": "SingleValue",
-        "query": "MATCH (n:`/{{EntityType}}`) RETURN count(n) AS Total;"
+        "query": "MATCH (n:Entity:`{{ClientId}}`) WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(n) AS Total;"
       }, {
         "name": "TotalEdges",
         "source": "Neo4j",
         "type": "SingleValue",
-        "query": "MATCH (n:`/{{EntityType}}`)-[r:`/ParentOf`]->() RETURN count(r) AS Total;"
+        "query": "MATCH (n:`Entity`:`{{ClientId}}`)-[r:`/ParentOf`]->() WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(r) AS Total;"
       }
     ]
   }

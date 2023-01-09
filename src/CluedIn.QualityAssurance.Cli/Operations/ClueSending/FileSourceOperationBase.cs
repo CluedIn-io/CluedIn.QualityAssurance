@@ -66,7 +66,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
                 Request = x["request"].ToString(),
             }).ToList() ?? new List<CustomMappingRequest>();
 
-            var customMappingOptions = new CustomMappingOptions
+            return new CustomMappingOptions
             {
                 ShouldAutoGenerateOriginEntityCodeKey = customMapping?["shouldAutoGenerateOriginEntityCodeKey"]?.AsValue().GetValue<bool?>() ?? true,
                 MappingRequests = requests,

@@ -65,6 +65,7 @@ internal class CustomQueryAction : IPostOperationAction
     protected string FormatString(Organization organization, string stringToFormat)
     {
         return stringToFormat
+                .Replace("{{ClientId}}", organization.ClientId.ToString())
                 .Replace("{{OrganizationId}}", organization.OrganizationId.ToString())
                 .Replace("{{UserId}}", organization.UserId.ToString());
     }
