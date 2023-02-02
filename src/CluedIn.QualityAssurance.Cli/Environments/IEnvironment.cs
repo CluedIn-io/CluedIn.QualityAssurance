@@ -16,4 +16,5 @@ internal interface IEnvironment
     Task<ElasticSearchConnectionInfo> GetElasticSearchConnectionInfoAsync(CancellationToken cancellationToken);
 
     Task<ServerUriCollection> GetServerUriCollectionAsync(CancellationToken cancellationToken);
+    Task<string> GetNewAccountAccessKeyAsync(CancellationToken cancellationToken);
 }

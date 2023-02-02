@@ -36,6 +36,7 @@ internal class KubernetesEnvironment : IEnvironment
 
     private ILogger<KubernetesEnvironment> Logger { get; }
     private IOptions<IKubernetesEnvironmentOptions> Options { get; }
+    private string NewAccountAccessKey { get; set; }
 
     public Task<float> GetAvailableMemoryInMegabytesAsync(CancellationToken cancellationToken)
     {
@@ -132,6 +133,8 @@ internal class KubernetesEnvironment : IEnvironment
                 };
             },
             cancellationToken);
+
+        NewAccountAccessKey = await this.GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<PortForwardResult> PortForwardAsync(string serviceName, int port, CancellationToken cancellationToken)
@@ -223,6 +226,16 @@ internal class KubernetesEnvironment : IEnvironment
             UiGraphqlUri: new Uri(serverUrlWithTrailingSlash, "graphql/"),
             UploadApiUri: new Uri(serverUrlWithTrailingSlash, "upload/")
             ));
+    }
+
+    private async Task<string> GetNewAccountAccessKeyInternalAsync(CancellationToken cancellationToken)
+    {
+        return await GetPasswordAsync("cluedin-new-organization-access-key", "key", cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<string> GetNewAccountAccessKeyAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(NewAccountAccessKey);
     }
 
     private Uri EnsureTrailingSlash(Uri uri)

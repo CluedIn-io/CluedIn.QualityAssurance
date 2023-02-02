@@ -88,6 +88,11 @@ internal class LocalEnvironment : IEnvironment
             ));
     }
 
+    public Task<string> GetNewAccountAccessKeyAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Options.Value.NewAccountAccessKey);
+    }
+
     private Uri EnsureTrailingSlash(Uri uri)
     {
         if (!uri.AbsoluteUri.EndsWith("/"))
