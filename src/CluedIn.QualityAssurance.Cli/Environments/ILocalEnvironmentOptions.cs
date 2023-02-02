@@ -68,6 +68,9 @@ internal interface ILocalCluedInServerOptions
 
     [Option("upload-api-url", Default = "http://localhost:8888/upload", SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn Upload API Uri.")]
     string UploadApiUrl { get; set; }
+
+    [Option("new-account-access-key", Default = null, SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn New Account Access Key.")]
+    string NewAccountAccessKey { get; set; }
 }
 
 internal interface ILocalEnvironmentOptions : ILocalNeo4jOptions, ILocalRabbitMqOptions, ILocalSqlServerOptions, ILocalElasticSearchOptions, ILocalCluedInServerOptions
