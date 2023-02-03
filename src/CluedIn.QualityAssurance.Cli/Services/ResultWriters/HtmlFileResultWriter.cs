@@ -18,7 +18,7 @@ internal class HtmlFileResultWriter : IResultWriter
         try
         {
             var template = await GetTemplateAsync().ConfigureAwait(false);
-            var output = template.Replace("{{JSON_DATA}}", JsonSerializer.Serialize(result));
+            var output = template.Replace("let resultData = [];", $"let resultData = [{JsonSerializer.Serialize(result)}];");
             var outputFilePath = Path.Combine(outputDirectoryPath, "results.html");
             await File.WriteAllTextAsync(outputFilePath, output).ConfigureAwait(false);
         }

@@ -9,7 +9,8 @@
 <body>
     <style>
         .runs-chart {
-            height: 33vh;
+            height: 300px;
+            width:100%;
         }
 
         .queueChartContainer {
@@ -19,8 +20,12 @@
     </style>
     <div class="container-fluid">
         <div class="row">
+            <select id="folder-selector">
+            </select>
+        </div>
+        <div class="row">
             <div class="queueChartContainer col runs-chart">
-                <canvas id="runChart" style="width:100%;height:100%"></canvas>
+                <canvas id="runChart" style="width:100%;height:300px"></canvas>
             </div>
         </div>
         <div class="row">
@@ -133,24 +138,53 @@
         </div>
     </div>
     <script>
-
-        function getData() {
-            return {{JSON_DATA}};
+        let resultData = [];
+        
+        function getData() {			
+            return resultData;
         }
-
+        
+        function isBlobStorage() {
+            const urlVars = getUrlVars();
+            return window.location.href.includes(".blob.core.windows.net")
+                && urlVars["sv"]
+                && urlVars["st"]
+                && urlVars["se"]
+                && urlVars["sp"]
+                && urlVars["spr"]
+                && urlVars["sig"];
+        }
+        
+        function getUrlVars()
+        {
+            var vars = [], hash;
+            var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+            for(var i = 0; i < hashes.length; i++)
+            {
+                hash = hashes[i].split('=');
+                vars.push(hash[0]);
+                vars[hash[0]] = hash[1];
+            }
+            return vars;
+        }
+        
         function createRunChart() {
-            var jsonData = getData().IterationResults;
+            const existingChart = Chart.getChart('runChart');
+            var jsonData = getData();
+            const maxTotalRuns = Math.max(...jsonData.map(data => data.IterationResults.length));
             const ctx = document.getElementById('runChart').getContext('2d');
-            const labels = jsonData.map((iteration, index) => index + 1);
+            const labels = [...Array(maxTotalRuns).keys()].map(key => key + 1);
             const data = {
                 labels: labels,
-                datasets: [{
-                    label: 'Runs',
-                    data: jsonData.map((iteration) => iteration.TotalTimeInSeconds),
+                datasets: jsonData.map((currentData, index) => ({
+                    label: currentData.Name ? currentData.Name : `Set ${index + 1}`,
+                    data: currentData.IterationResults.map((iteration) => iteration.TotalTimeInSeconds),
                     fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.4
-                }]
+                    borderColor: colors[index % colors.length],
+                    tension: 0.4,
+                    responsive: false,
+                    maintainAspectRatio: false,
+                }))
             };
             const config = {
                 type: 'line',
@@ -163,7 +197,13 @@
                     }
                 }
             };
-            const myChart = new Chart(ctx, config);
+            
+            if (!existingChart) {
+                const myChart = new Chart(ctx, config);
+            } else {
+                existingChart.data = data;
+                existingChart.update();
+            }
         }
 
         var colors = [
@@ -221,23 +261,27 @@
             };
         }
 
-        function populateSelectionDropdown() {
-            var jsonData = getData().IterationResults;
-            var items = jsonData.map((result, resultIndex) => ({
-                text: "Run " + (resultIndex + 1) + " - " + result.TotalTimeInSeconds.toFixed(2) + "s",
-                resultIndex: resultIndex
-            }));
+        function populateComparisonSelectors() {
+            var jsonData = getData();
 
-            for (var current of items) {
-                $('.comparison-selection').append($('<option>', {
-                    value: current.resultIndex,
-                    text: current.text
-                }));
+            let setIndex = 0;
+            let selectors = $('.comparison-selection');
+            selectors.empty();
+            for (var currentSet of jsonData) {
+                let runIndex = 0;
+                for (var result of currentSet.IterationResults) {
+                    selectors.append($('<option>', {
+                        value: `${setIndex}|${runIndex}`,
+                        text: `Set ${setIndex + 1} - Run ${runIndex + 1} - ${result.TotalTimeInSeconds.toFixed(2)}s`,
+                    }));
+                    runIndex++;
+                }
+                setIndex++;
             }
         }
 
         function createQueueSideCharts(sideCharts) {
-            var allData = getData().IterationResults;
+            var allData = getData();
             var dropdowns = $(".comparison-selection");
 
             for (var sideChart of sideCharts) {
@@ -248,8 +292,10 @@
 
             var minDates = [];
             for (var i = 0; i < dropdowns.length; ++i) {
-                var currentIndex = $(dropdowns[i]).val();
-                var currentData = allData[currentIndex];
+                var currentIndexes = $(dropdowns[i]).val().split("|");
+                var currentSetIndex = currentIndexes[0];
+                var currentRunIndex = currentIndexes[1];
+                var currentData = allData[currentSetIndex].IterationResults[currentRunIndex];
                 var currentMaxDate = undefined;
                 var currentMinDate = Date.now();
                 var pollingHistory = currentData.QueuePollingHistory;
@@ -283,8 +329,10 @@
             }
 
             for (var i = 0; i < dropdowns.length; ++i) {
-                var currentIndex = $(dropdowns[i]).val();
-                var currentData = allData[currentIndex];
+                var currentIndexes = $(dropdowns[i]).val().split("|");
+                var currentSetIndex = currentIndexes[0];
+                var currentRunIndex = currentIndexes[1];
+                var currentData = allData[currentSetIndex].IterationResults[currentRunIndex];
                 for (var sideChart of sideCharts) {
                     sideChart.datasets[i] = [];
                 }
@@ -318,7 +366,6 @@
             }
 
             for (var i = 0; i < dropdowns.length; ++i) {
-                var currentIndex = $(dropdowns[i]).val();
                 var side = $(dropdowns[i]).attr('data-comparison-side');
                 for (var sideChart of sideCharts) {
                     createQueueChart({
@@ -415,16 +462,72 @@
 
             createQueueSideCharts(sideCharts);
         }
-
-        $(function () {
-            createRunChart();
-            populateSelectionDropdown();
-
+        
+        function getBaseUrl() {
+            const urlWithoutQueryString = window.location.href.split('?')[0];
+            return urlWithoutQueryString.includes("index.html") 
+                ? urlWithoutQueryString.substring(0, urlWithoutQueryString.length - "index.html".length) 
+                : urlWithoutQueryString;
+        }
+        
+        function populateFolderSelector() {
+            const baseUrl = getBaseUrl();
+            const urlVars = getUrlVars();
+            const queryString = location.search + "&restype=container&comp=list&delimiter=/"
+            const url = `${baseUrl}${queryString}`
+            return $.get( url, function( data ) {					
+                const xml = $(data);
+                const prefixes = xml.find("BlobPrefix").find("Name").each(function() {
+                    const nameWithDelimiter = $(this).text();
+                    const name = nameWithDelimiter.substring(0, nameWithDelimiter.length - 1);
+                    $("#folder-selector").append($('<option>', {
+                        value: name,
+                        text: name
+                    }));
+                });
+                
+                if (urlVars["folder"]) {
+                    $("#folder-selector").val(urlVars["folder"]);
+                }
+            });
+        }
+        
+        $(function () {			
             $(".comparison-selection").change(function () {
                 createMessageCharts();
             });
-
-            createMessageCharts();
+            
+            if (!isBlobStorage()){
+                $("#folder-selector").hide();
+                createRunChart();
+                populateComparisonSelectors();
+                createMessageCharts();
+            } else {
+                populateFolderSelector().then(function() {
+                    $("#folder-selector").show().change(function () {
+                        const folder = $("#folder-selector").val();
+                        const baseUrl = getBaseUrl();
+                        const url = `${baseUrl}${location.search}&restype=container&comp=list&prefix=${folder}`; 
+                        $.get(url)
+                            .then(function(data) {
+                                const names = $(data).find("Blob").find("Name");
+                                let getResultPromises = [];
+                                
+                                names.each(function() {
+                                    const resultFilesUrl = `${baseUrl}${$(this).text()}${location.search}`; 
+                                    getResultPromises.push($.get(resultFilesUrl).then(currentResultData => JSON.parse(currentResultData)));
+                                });
+                                
+                                return Promise.all(getResultPromises).then(function(allData) {
+                                    resultData = allData;
+                                    createRunChart();
+                                    populateComparisonSelectors();
+                                    createMessageCharts();
+                                });
+                            });
+                    }).change();
+                });
+            }
         });
 
     </script>
