@@ -265,7 +265,7 @@ internal class RabbitMQService
             uint publishCount = current?.message_stats?.publish ?? 0;
             double publishRate = current?.message_stats?.publish_details?.rate ?? 0.0f;
             uint messageCount = current?.messages ?? 0;
-            double messageCountRate = current?.message_stats?.publish_details?.rate ?? 0.0f;
+            double messageCountRate = current?.messages_details?.rate ?? 0.0f;
             return new QueueInfo(
                 QueueName: current.name,
                 Acknowledged: new(ackCount, ackRate),
