@@ -20,6 +20,8 @@ internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationO
     public string UploadApiUrl { get; set; }
 
     public string ServerUrl { get; set; }
+
+    public string NewAccountAccessKey { get; set; }
     #endregion
 
 

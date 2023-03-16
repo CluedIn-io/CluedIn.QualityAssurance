@@ -211,6 +211,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
     protected virtual async Task CreateOrganizationAsync(CancellationToken cancellationToken)
     {
+        var newAccountAccessKey = await Environment.GetNewAccountAccessKeyAsync(cancellationToken).ConfigureAwait(false);
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = new Uri(serverUris.AuthApiUri, "api/account/new");
 
@@ -231,6 +232,12 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         {
             Content = new FormUrlEncodedContent(requestBody),
         };
+
+        if (!string.IsNullOrWhiteSpace(newAccountAccessKey))
+        {
+            Logger.LogInformation("Using newAccountAccessKey ");
+            requestMessage.Headers.Add("x-cluedin-newaccountaccesskey", newAccountAccessKey);
+        }
 
         _ = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
     }
