@@ -230,7 +230,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
         var body = await GetRequestTemplateAsync(nameof(CreateDataSetAsync)).ConfigureAwait(false);
         var replacedBody = body.Replace("{{UserId}}", Organization.UserId.ToString())
             .Replace("{{DataSourceId}}", FileSource.DataSourceId.ToString())
-            .Replace("{{EntityType}}", FileSource.EntityType);
+            .Replace("{{EntityType}}", FileSource.EntityType + "Dummy");
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
