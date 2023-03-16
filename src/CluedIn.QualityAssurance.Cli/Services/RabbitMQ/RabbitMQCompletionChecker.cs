@@ -254,7 +254,9 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
             if (SampledQueueInfo.Count == totalSamples)
             {
-                isComplete = SampledQueueInfo.All(info => info.Messages.Count == 0 && info.Published.Count == SampledQueueInfo.First().Published.Count);
+                var totalUniquePublishedCount = SampledQueueInfo.Select(info => info.Published.Count).Distinct().Count();
+                bool hasNewMessages = totalUniquePublishedCount != 1;
+                isComplete = !hasNewMessages && SampledQueueInfo.All(info => IsIdleQueue(info));
             }
 
             Logger.LogDebug(
@@ -267,18 +269,29 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
             QueueInfo? completedInfo = null;
             if (isComplete)
             {
-                var lastNonZeroIndex = HistoricalQueueInfo.FindLastIndex(info => info.Messages.Count != 0);
-                if (lastNonZeroIndex == -1)
+                var maxPublished = HistoricalQueueInfo.Max(info => info.Published.Count);
+                var firstMaxPublishIndex = HistoricalQueueInfo.FindIndex(info => IsIdleQueue(info) && info.Published.Count == maxPublished);
+                if (firstMaxPublishIndex == -1)
                 {
                     completedInfo = HistoricalQueueInfo[1];
                 }
-                else if (lastNonZeroIndex <= HistoricalQueueInfo.Count - 2)
+                else
                 {
-                    completedInfo = HistoricalQueueInfo[lastNonZeroIndex + 1];
+                    completedInfo = HistoricalQueueInfo[firstMaxPublishIndex];
                 }
             }
 
             return (currentInfo, isComplete, completedInfo, HistoricalQueueInfo);
+
+            static bool IsIdleQueue(QueueInfo info)
+            {
+                return info.Messages.Count == 0
+                    && info.Messages.Rate == 0
+                    && info.Published.Rate == 0
+                    && info.Acknowledged.Rate == 0
+                    && info.Delivered.Rate == 0
+                    && info.Redelivered.Rate == 0;
+            }
         }
     }
 }
