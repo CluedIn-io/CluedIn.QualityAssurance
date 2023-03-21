@@ -1,4 +1,5 @@
 ﻿using CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
+using CluedIn.QualityAssurance.Cli.Probes;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
@@ -12,7 +13,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     private ILogger<RabbitMQCompletionChecker> Logger { get; }
 
     private RabbitMQService RabbitMqService { get; }
-
+    private IStatsProbe StatsProbe { get; }
     private List<string> ObservedQueueRegexes { get; } = new ()
     {
         @".*Messages.*\.(.*Command).*",
@@ -37,9 +38,10 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private Dictionary<string, QueueHistory> ForceIncludeQueues { get; set; } = new ();
 
-    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, RabbitMQService rabbitMqService)
+    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, RabbitMQService rabbitMqService, IStatsProbe statsProbe)
     {
         RabbitMqService = rabbitMqService ?? throw new ArgumentNullException(nameof(rabbitMqService));
+        StatsProbe = statsProbe ?? throw new ArgumentNullException(nameof(statsProbe));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -49,6 +51,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         ObservedQueueCheckers = new ();
         CriticalQueueCheckers = new ();
         ForceIncludeQueues = new ();
+        await StatsProbe.InitializeAsync(cancellationToken).ConfigureAwait(false);
         _ = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
     }
 
@@ -66,10 +69,14 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 Logger.LogInformation("Aborting polling because cancellation is requested.");
 
                 // TODO: Return partial history
-                return new(startTime, DateTimeOffset.UtcNow, new());
+                return new(startTime, DateTimeOffset.UtcNow, new(), await StatsProbe.GetProbeResultsAsync(cancellationToken).ConfigureAwait(false));
             }
 
-            var results = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+            var populateQueueTask = PopulateQueueInformation(cancellationToken);
+            var probeTask = StatsProbe.ProbeAsync(cancellationToken);
+
+            await Task.WhenAll(populateQueueTask, probeTask).ConfigureAwait(false);
+            var results = await populateQueueTask;
             if (results.Any(results => results.CurrentQueueInfo.Messages.Count != 0))
             {
                 hasStartedProcessing = true;
@@ -104,7 +111,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                     .ToDictionary(checker => checker.QueueName, checker => new QueuePollingHistory(checker.QueueName,  checker.ShortQueueName, checker.HistoricalQueueInfo));
 
                 AddForceIncludeQueues(queuePollingHistory);
-                return new(startTime, endTime, queuePollingHistory);
+                return new(startTime, endTime, queuePollingHistory, await StatsProbe.GetProbeResultsAsync(cancellationToken).ConfigureAwait(false));
             }
 
             if (shouldShowLog)

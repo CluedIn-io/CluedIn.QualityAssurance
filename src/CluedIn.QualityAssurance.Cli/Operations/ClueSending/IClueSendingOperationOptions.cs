@@ -19,4 +19,7 @@ internal interface IClueSendingOperationOptions : IMultiIterationOptions
 
     [Option("output-directory", Required = true, HelpText = "Result output directory.")]
     public string OutputDirectory { get; set; }
+
+    [Option("skip-post-operation-actions", Default = false, Required = false, HelpText = "Skips post operation actions.")]
+    public bool SkipPostOperationActions { get; set; }
 }

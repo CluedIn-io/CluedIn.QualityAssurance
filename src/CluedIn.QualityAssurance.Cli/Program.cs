@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
 using CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
+using CluedIn.QualityAssurance.Cli.Probes;
 
 namespace CluedIn.QualityAssurance.Cli;
 
@@ -151,6 +152,7 @@ internal class Program
     private static IServiceCollection ConfigureServices(IServiceCollection services, object options)
     {
         services.AddTransient<EdgeExporter>();
+        services.AddTransient<IStatsProbe, StatsProbe>();
 
         services = AddClueSendingOperations(services, options);
         return services;

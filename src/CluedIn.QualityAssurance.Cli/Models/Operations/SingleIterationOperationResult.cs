@@ -1,4 +1,5 @@
-﻿using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
+﻿using CluedIn.QualityAssurance.Cli.Probes;
+using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 
 namespace CluedIn.QualityAssurance.Cli.Models.Operations;
 internal class SingleIterationOperationResult : IOperationResult
@@ -22,4 +23,5 @@ internal class SingleIterationOperationResult : IOperationResult
     public Organization Organization { get; set; } = new Organization();
 
     public MemoryStatistics MemoryStatistics { get; set; } = new MemoryStatistics();
+    public ICollection<StatsProbeResult> StatsProbeHistory { get; internal set; }
 }

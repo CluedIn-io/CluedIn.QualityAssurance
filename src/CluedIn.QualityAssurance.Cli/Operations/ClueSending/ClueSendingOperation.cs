@@ -155,15 +155,24 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             var completionCheckerResult = await completionCheckerTask.ConfigureAwait(false);
             result.EndTime = completionCheckerResult.EndTime;
             result.QueuePollingHistory = completionCheckerResult.QueuePollingHistory;
+            result.StatsProbeHistory = completionCheckerResult.StatsProbeResults;
             Logger.LogInformation("Successfully waited for completion. Test ran from {Start} to {End}.", result.StartTime, result.EndTime);
         }
 
         PopulateQueueStats(result, await completionCheckerTask.ConfigureAwait(false), cancellationToken);
         result.MemoryStatistics.After = await Environment.GetAvailableMemoryInMegabytesAsync(cancellationToken).ConfigureAwait(false);
 
-        foreach (var current in PostOperationActions)
+        if (Options.SkipPostOperationActions)
         {
-            await current.ExecuteAsync(result, cancellationToken).ConfigureAwait(false);
+            Logger.LogInformation("Skipping post operation actions because it is set to skipped in options.");
+        }
+        else
+        {
+            Logger.LogInformation("Running post operation actions.");
+            foreach (var current in PostOperationActions)
+            {
+                await current.ExecuteAsync(result, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return result;

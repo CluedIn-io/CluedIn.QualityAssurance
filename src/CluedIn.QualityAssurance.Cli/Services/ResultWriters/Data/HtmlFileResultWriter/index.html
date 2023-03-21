@@ -139,6 +139,7 @@
     </div>
     <script>
         let resultData = [];
+		const defaultLegendClickHandler = Chart.defaults.plugins.legend.onClick;
         
         function getData() {			
             return resultData;
@@ -194,6 +195,10 @@
                         y: {
                             beginAtZero: true
                         }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
                     }
                 }
             };
@@ -233,6 +238,9 @@
 
         function getOptions(result, chartTitle, xTitle, yTitle, xSuggestedMax, ySuggestedMax) {
             return {
+				animation: false,
+				parsing: false,
+				responsive: true,
                 scales: {
                     x: {
                         type: 'linear',
@@ -241,7 +249,12 @@
                             text: xTitle
                         },
                         min: 0,
-                        suggestedMax: xSuggestedMax
+                        suggestedMax: xSuggestedMax,
+						ticks: {
+						  source: 'auto',
+						  maxRotation: 0,
+						  autoSkip: true,
+						}
                     },
                     y: {
                         title: {
@@ -252,11 +265,27 @@
                         suggestedMax: ySuggestedMax
                     }
                 },
+                interaction: {
+                    intersect: false,
+					axis: 'x',
+                    mode: 'index',
+                },
                 plugins: {
                     title: {
                         display: true,
                         text: chartTitle
+                    },
+					decimation: {
+						enabled: true,
+					},
+					legend: {
+						onClick: function(event, legendItem, legend) {
+							defaultLegendClickHandler(event, legendItem, legend);
+							let hasDisabled = legend.chart.getVisibleDatasetCount() < legend.chart.data.datasets.length;
+							legend.chart.options.scales.y.suggestedMax = hasDisabled ? null : ySuggestedMax;
+							legend.chart.update();
                     }
+					},
                 }
             };
         }
@@ -349,7 +378,7 @@
                             tension: 0.4,
                             responsive: true,
                             maintainAspectRatio: false,
-                            data: []
+                            data: [],
                         });
                     }
 
@@ -480,9 +509,12 @@
                 const prefixes = xml.find("BlobPrefix").find("Name").each(function() {
                     const nameWithDelimiter = $(this).text();
                     const name = nameWithDelimiter.substring(0, nameWithDelimiter.length - 1);
+					const withoutTime = name.substring(0, name.lastIndexOf('-'));
+					const text = withoutTime.substring(withoutTime.lastIndexOf('-') + 1);
+					
                     $("#folder-selector").append($('<option>', {
                         value: name,
-                        text: name
+                        text: text
                     }));
                 });
                 
@@ -492,7 +524,7 @@
             });
         }
         
-        $(function () {			
+        $(async function () {			
             $(".comparison-selection").change(function () {
                 createMessageCharts();
             });
@@ -503,29 +535,29 @@
                 populateComparisonSelectors();
                 createMessageCharts();
             } else {
-                populateFolderSelector().then(function() {
-                    $("#folder-selector").show().change(function () {
-                        const folder = $("#folder-selector").val();
-                        const baseUrl = getBaseUrl();
-                        const url = `${baseUrl}${location.search}&restype=container&comp=list&prefix=${folder}`; 
-                        $.get(url)
-                            .then(function(data) {
-                                const names = $(data).find("Blob").find("Name");
-                                let getResultPromises = [];
-                                
-                                names.each(function() {
-                                    const resultFilesUrl = `${baseUrl}${$(this).text()}${location.search}`; 
-                                    getResultPromises.push($.get(resultFilesUrl).then(currentResultData => JSON.parse(currentResultData)));
-                                });
-                                
-                                return Promise.all(getResultPromises).then(function(allData) {
-                                    resultData = allData;
-                                    createRunChart();
-                                    populateComparisonSelectors();
-                                    createMessageCharts();
-                                });
-                            });
-                    }).change();
+                await populateFolderSelector();
+				$("#folder-selector").show().change(function () {
+					const folder = $("#folder-selector").val();
+					const baseUrl = getBaseUrl();
+					const url = `${baseUrl}${location.search}&restype=container&comp=list&prefix=${folder}`; 
+					$.get(url)
+						.then(function(data) {
+							const names = $(data).find("Blob").find("Name");
+							let getResultPromises = [];
+							
+							names.each(function() {
+								const resultFilesUrl = `${baseUrl}${$(this).text()}${location.search}`; 
+								getResultPromises.push($.get(resultFilesUrl).then(currentResultData => JSON.parse(currentResultData)));
+							});
+							
+							return Promise.all(getResultPromises).then(function(allData) {
+								resultData = allData;
+								createRunChart();
+								populateComparisonSelectors();
+								createMessageCharts();
+							});
+						});
+				}).change();
                 });
             }
         });
