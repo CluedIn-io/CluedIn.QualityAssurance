@@ -12,12 +12,13 @@ internal interface IStatsProbe
 
 internal class StatsProbe : IStatsProbe
 {
-    private List<StatsProbeResult> probeResults = new List<StatsProbeResult>();
+    private List<StatsProbeResult> probeResults = new ();
     private DockerClient client;
 
     public Task InitializeAsync(CancellationToken cancellationToken)
     {
         client = new DockerClientConfiguration().CreateClient();
+        probeResults = new ();
         return Task.CompletedTask;
     }
 
