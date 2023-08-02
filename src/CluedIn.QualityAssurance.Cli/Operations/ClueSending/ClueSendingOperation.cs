@@ -136,7 +136,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             Organization = Organization,
         };
 
-        var operations = GetSetupOperations(isReingestion);
+        var operations = await GetSetupOperationsAsync(isReingestion, cancellationToken).ConfigureAwait(false);
         await ExecuteSetupOperationsAsync(operations, cancellationToken).ConfigureAwait(false);
 
         await CompletionChecker.InitializeAsync(cancellationToken).ConfigureAwait(false);
@@ -189,11 +189,13 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
     protected abstract Task ExecuteIngestionAsync(CancellationToken cancellationToken);
 
-    private async Task ExecuteSetupOperationsAsync(IEnumerable<Func<CancellationToken, Task>> operations, CancellationToken cancellationToken)
+    private async Task ExecuteSetupOperationsAsync(IEnumerable<SetupOperation> operations, CancellationToken cancellationToken)
     {
         foreach (var operation in operations)
         {
-            Logger.LogInformation("Begin operation {OperationName}.", operation.Method.Name);
+            using var scope = operation.LoggingScopeState != null ? this.Logger.BeginScope(operation.LoggingScopeState) : null;
+            var operationName = operation.Name ?? operation.Function.Method.Name;
+            Logger.LogInformation("Begin operation {OperationName}.", operationName);
             await Task.Delay(DelayBeforeOperation, cancellationToken).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
             {
@@ -201,8 +203,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
                 return;
             }
 
-            await operation(cancellationToken).ConfigureAwait(false);
-            Logger.LogInformation("End operation {OperationName}.", operation.Method.Name);
+            await operation.Function(cancellationToken).ConfigureAwait(false);
+            Logger.LogInformation("End operation {OperationName}.", operationName);
         }
     }
 
@@ -225,7 +227,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         return $"{OverallResult.StartTime.ToString("yyyyMMddHHmmss")}x{iterationNumber}";
     }
 
-    protected abstract IEnumerable<Func<CancellationToken, Task>> GetSetupOperations(bool isReingestion);
+    protected abstract Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken);
 
     protected virtual async Task CreateOrganizationAsync(CancellationToken cancellationToken)
     {
@@ -412,4 +414,5 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             });
         }
     }
+    protected record SetupOperation(Func<CancellationToken, Task> Function, string? Name = null, Dictionary<string, object> LoggingScopeState = null);
 }

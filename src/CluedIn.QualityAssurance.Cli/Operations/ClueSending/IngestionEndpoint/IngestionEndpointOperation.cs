@@ -29,40 +29,54 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
     protected override Task ExecuteIngestionAsync(CancellationToken cancellationToken)
     {
-        return StreamToIngestionEndpointAsync(cancellationToken);
+        return StreamAllToIngestionEndpointAsync(cancellationToken);
     }
 
-    protected override IEnumerable<Func<CancellationToken, Task>> GetSetupOperations(bool isReingestion)
+    protected override async Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken)
     {
-        var operations = new List<Func<CancellationToken, Task>>();
+        var operations = new List<SetupOperation>();
 
         if (isReingestion)
         {
-            operations.Add(LoginAsync);
-            operations.Add(SubmitSampleClueAsync); // not really necessary.
+            operations.Add(new SetupOperation(LoginAsync));
+            operations.Add(new SetupOperation(SubmitSampleClueAsync)); // not really necessary.
         }
         else
         {
-            operations.Add(CreateOrganizationAsync);
-            operations.Add(LoginAsync);
-            operations.Add(SubmitSampleClueAsync);
-            operations.Add(CreateDataSourceSetAsync);
-            operations.Add(CreateDataSourceAsync);
-            operations.Add(CreateDataSetAsync);
-            operations.Add(SendSampleDataAsync);
-            operations.Add(AutoAnnotateAsync);
-            operations.Add(GetAnnotationIdAsync);
-            AddMappingModifications(operations);
-            operations.Add(ModifyDataSetAutoSubmitAsync);
+            operations.Add(new SetupOperation(CreateOrganizationAsync));
+            operations.Add(new SetupOperation(LoginAsync));
+            operations.Add(new SetupOperation(SubmitSampleClueAsync));
+            foreach(var fileSource in FileSources)
+            {
+                operations.Add(CreateSetupOperation(fileSource, CreateDataSourceSetAsync));
+                operations.Add(CreateSetupOperation(fileSource, CreateDataSourceAsync));
+                operations.Add(CreateSetupOperation(fileSource, CreateDataSetAsync));
+                operations.Add(CreateSetupOperation(fileSource, SendSampleDataAsync));
+                operations.Add(CreateSetupOperation(fileSource, AutoAnnotateAsync));
+                operations.Add(CreateSetupOperation(fileSource, GetAnnotationIdAsync));
+                await AddMappingModificationsAsync(fileSource, operations, cancellationToken).ConfigureAwait(false);
+                operations.Add(CreateSetupOperation(fileSource, ModifyDataSetAutoSubmitAsync));
+            }
         }
 
         return operations;
     }
 
-    private async Task StreamToIngestionEndpointAsync(CancellationToken cancellationToken)
+    private async Task StreamAllToIngestionEndpointAsync(CancellationToken cancellationToken)
     {
+        foreach (var fileSource in FileSources)
+        {
+            await StreamToIngestionEndpointAsync(fileSource, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task StreamToIngestionEndpointAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var fileName = Path.GetFileName(fileSource.UploadFilePath);
+        Logger.LogInformation("Begin streaming {FileName} to ingestion endpoint.", fileName);
+
         int BatchSize = Options.IngestionBatchSize;
-        var fileStream = GetUploadFileStream();
+        var fileStream = GetUploadFileStream(fileSource);
         using (var streamReader = new StreamReader(fileStream))
         using (var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -86,7 +100,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
                     batch.Add(currentRecord.Columns);
                     if (batch.Count == BatchSize)
                     {
-                        var success = await SendBatchToIngestionEndpointAsync(batch, cancellationToken).ConfigureAwait(false);
+                        var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
                         if (success)
                         {
                             totalSent += BatchSize;
@@ -112,7 +126,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
             if (batch.Count > 0)
             {
                 Logger.LogInformation("Sending last batch of rows.");
-                var success = await SendBatchToIngestionEndpointAsync(batch, cancellationToken).ConfigureAwait(false);
+                var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
                 if (success)
                 {
                     totalSent += batch.Count;
@@ -120,11 +134,11 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
                 }
                 batch.Clear();
             }
-            Logger.LogInformation("Finished streaming to ingestion endpoint. Total Rows sent {TotalSent}", totalSent);
+            Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
         }
     }
 
-    private async Task<bool> SendBatchToIngestionEndpointAsync(List<Dictionary<string, string>> batch, CancellationToken cancellationToken)
+    private async Task<bool> SendBatchToIngestionEndpointAsync(FileSource fileSource, List<Dictionary<string, string>> batch, CancellationToken cancellationToken)
     {
         var totalRetries = 10;
         var delayBetweenRetries = TimeSpan.FromSeconds(2);
@@ -139,7 +153,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
             try
             {
                 var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-                var requestUri = new Uri(serverUris.UploadApiUri, $"api/endpoint/{FileSource.DataSetId}");
+                var requestUri = new Uri(serverUris.UploadApiUri, $"api/endpoint/{fileSource.DataSetId}");
 
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
                 {
@@ -173,9 +187,9 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
     }
 
 
-    private async Task<List<Dictionary<string, string>>> GetSampleDataAsync(CancellationToken cancellationToken)
+    private async Task<List<Dictionary<string, string>>> GetSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
-        var fileStream = GetUploadFileStream();
+        var fileStream = GetUploadFileStream(fileSource);
         using (var streamReader = new StreamReader(fileStream))
         using (var csv = new CsvReader(streamReader, CultureInfo.InvariantCulture))
         {
@@ -186,14 +200,14 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
         }
     }
 
-    private async Task CreateDataSourceAsync(CancellationToken cancellationToken)
+    private async Task CreateDataSourceAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
         var body = await GetRequestTemplateAsync(nameof(CreateDataSourceAsync)).ConfigureAwait(false);
         var replacedBody = body.Replace("{{UserId}}", Organization.UserId.ToString())
-            .Replace("{{DataSourceSetId}}", FileSource.DataSourceSetId.ToString());
+            .Replace("{{DataSourceSetId}}", fileSource.DataSourceSetId.ToString());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -219,18 +233,18 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         int? resultDataSourceId = result.data?.inbound?.createDataSource?.id ?? throw new InvalidOperationException("DataSourceSet is not found in result.");
 
-        FileSource.DataSourceId = resultDataSourceId.Value;
+        fileSource.DataSourceId = resultDataSourceId.Value;
     }
 
-    private async Task CreateDataSetAsync(CancellationToken cancellationToken)
+    private async Task CreateDataSetAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
         var body = await GetRequestTemplateAsync(nameof(CreateDataSetAsync)).ConfigureAwait(false);
         var replacedBody = body.Replace("{{UserId}}", Organization.UserId.ToString())
-            .Replace("{{DataSourceId}}", FileSource.DataSourceId.ToString())
-            .Replace("{{EntityType}}", FileSource.EntityType + "Dummy");
+            .Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString())
+            .Replace("{{EntityType}}", fileSource.EntityType + "Dummy");
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -263,22 +277,22 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
             throw new InvalidOperationException("DataSourceSet is not found in result.");
         }
 
-        FileSource.DataSetId = dataSetsArray[0].id.Value;
+        fileSource.DataSetId = dataSetsArray[0].id.Value;
     }
 
-    private async Task SendSampleDataAsync(CancellationToken cancellationToken)
+    private async Task SendSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
-        var sampleData = await GetSampleDataAsync(cancellationToken).ConfigureAwait(false);
-        await SendBatchToIngestionEndpointAsync(sampleData, cancellationToken).ConfigureAwait(false);
+        var sampleData = await GetSampleDataAsync(fileSource, cancellationToken).ConfigureAwait(false);
+        await SendBatchToIngestionEndpointAsync(fileSource, sampleData, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ModifyDataSetAutoSubmitAsync(CancellationToken cancellationToken)
+    private async Task ModifyDataSetAutoSubmitAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
         var body = await GetRequestTemplateAsync(nameof(ModifyDataSetAutoSubmitAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", FileSource.DataSetId.ToString());
+        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
