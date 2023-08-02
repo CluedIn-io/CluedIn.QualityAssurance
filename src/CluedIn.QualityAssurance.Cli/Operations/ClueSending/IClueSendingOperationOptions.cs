@@ -19,4 +19,11 @@ internal interface IClueSendingOperationOptions : IMultiIterationOptions
 
     [Option("output-directory", Required = true, HelpText = "Result output directory.")]
     public string OutputDirectory { get; set; }
+
+    [Option("skip-post-operation-actions", Default = false, Required = false, HelpText = "Skips post operation actions.")]
+    public bool SkipPostOperationActions { get; set; }
+
+    [Option("allowed-post-operation-actions", Default = null, Required = false,
+        HelpText = "Allowed post operation actions. Only post operation actions with these names will be run.")]
+    public IEnumerable<string> AllowedPostOperationActions { get; set; }
 }
