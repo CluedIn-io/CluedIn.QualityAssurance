@@ -8,11 +8,6 @@ namespace CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 
 internal class RabbitMQService
 {
-    private ILogger<RabbitMQService> Logger { get; }
-    private IHttpClientFactory HttpClientFactory { get; }
-    private IEnvironment Environment { get; }
-    private RabbitMQConnectionInfo RabbitMqConnectionInfo { get; set; }
-
     public RabbitMQService(ILogger<RabbitMQService> logger, IHttpClientFactory httpClientFactory, IEnvironment testEnvironment)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -20,24 +15,20 @@ internal class RabbitMQService
         Environment = testEnvironment ?? throw new ArgumentNullException(nameof(testEnvironment));
     }
 
-    private async Task InitializeConnectionInfoAsync(CancellationToken cancellationToken)
-    {
-        if (RabbitMqConnectionInfo == default)
-        {
-            RabbitMqConnectionInfo = await Environment.GetRabbitMqConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+    private ILogger<RabbitMQService> Logger { get; }
+    private IHttpClientFactory HttpClientFactory { get; }
+    private IEnvironment Environment { get; }
 
-            if (RabbitMqConnectionInfo == default)
-            {
-                throw new InvalidOperationException("Retrieved null RabbitMqConnectionInfo.");
-            }
-        }
+    private Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
+    {
+        return Environment.GetRabbitMqConnectionInfoAsync(cancellationToken);
     }
 
     public async Task PurgeQueueAsync(string queueName, CancellationToken cancellationToken)
     {
-        await InitializeConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+        var connectionInfo = await GetRabbitMqConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
         Logger.LogInformation("Purging queue '{QueueName}'.", queueName);
-        var uri = new Uri(RabbitMqConnectionInfo.ManagementUri, $"api/queues/%2F/{queueName}/contents");
+        var uri = new Uri(connectionInfo.ManagementUri, $"api/queues/%2F/{queueName}/contents");
         var payload = new
         {
             vhost = "/",
@@ -49,7 +40,7 @@ internal class RabbitMQService
             Content = JsonContent.Create(payload),
         };
 
-        var authenticationString = $"{RabbitMqConnectionInfo.UserName}:{RabbitMqConnectionInfo.Password}";
+        var authenticationString = $"{connectionInfo.UserName}:{connectionInfo.Password}";
         var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.UTF8.GetBytes(authenticationString));
         request.Headers.Add("Authorization", "Basic " + base64EncodedAuthenticationString);
 
@@ -60,10 +51,10 @@ internal class RabbitMQService
 
     public async Task<QueueInfo> GetRabbitQueueInfoAsync(string queueName, CancellationToken cancellationToken)
     {
-        await InitializeConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
-        var uri = new Uri(RabbitMqConnectionInfo.ManagementUri, $"api/queues/%2F/{queueName}");
+        var connectionInfo = await GetRabbitMqConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+        var uri = new Uri(connectionInfo.ManagementUri, $"api/queues/%2F/{queueName}");
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        var authenticationString = $"{RabbitMqConnectionInfo.UserName}:{RabbitMqConnectionInfo.Password}";
+        var authenticationString = $"{connectionInfo.UserName}:{connectionInfo.Password}";
         var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.UTF8.GetBytes(authenticationString));
         request.Headers.Add("Authorization", "Basic " + base64EncodedAuthenticationString);
 
@@ -168,10 +159,10 @@ internal class RabbitMQService
 
     public async Task<ICollection<QueueInfo>> GetRabbitAllQueueInfoAsync(CancellationToken cancellationToken)
     {
-        await InitializeConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
-        var uri = new Uri(RabbitMqConnectionInfo.ManagementUri, $"api/queues/%2F");
+        var connectionInfo = await GetRabbitMqConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+        var uri = new Uri(connectionInfo.ManagementUri, $"api/queues/%2F");
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        var authenticationString = $"{RabbitMqConnectionInfo.UserName}:{RabbitMqConnectionInfo.Password}";
+        var authenticationString = $"{connectionInfo.UserName}:{connectionInfo.Password}";
         var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.UTF8.GetBytes(authenticationString));
         request.Headers.Add("Authorization", "Basic " + base64EncodedAuthenticationString);
 
