@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 using CluedIn.QualityAssurance.Cli.Models.ElasticSearch;
 using CluedIn.QualityAssurance.Cli.Models.Neo4j;
@@ -11,6 +13,7 @@ namespace CluedIn.QualityAssurance.Cli.Environments;
 
 internal class KubernetesEnvironment : IEnvironment
 {
+    private static readonly TimeSpan PortForwardConnectionAliveInterval = TimeSpan.FromMinutes(30);
     private static readonly Dictionary<string, ServiceSettings> Settings = new Dictionary<string, ServiceSettings>
     {
         [nameof(Neo4jConnectionInfo)] = new ServiceSettings("neo4j", "cluedin-neo4j", "cluedin-neo4j-secrets", "neo4j-password", 7687),
@@ -37,6 +40,7 @@ internal class KubernetesEnvironment : IEnvironment
     private ILogger<KubernetesEnvironment> Logger { get; }
     private IOptions<IKubernetesEnvironmentOptions> Options { get; }
     private string NewAccountAccessKey { get; set; }
+    private DateTimeOffset SetupTime { get; set; }
 
     public Task<float> GetAvailableMemoryInMegabytesAsync(CancellationToken cancellationToken)
     {
@@ -47,14 +51,9 @@ internal class KubernetesEnvironment : IEnvironment
     private async Task<T> GetOrCreateConnectionInfoAsync<T>(string name, Func<string, string, PortForwardResult, T> createConnectionInfoFunc, CancellationToken cancellationToken)
         where T : class
     {
-        if (!Settings.TryGetValue(name, out var settings))
+        if (TryGetConnectionInfo<T>(name, out var foundConnectionInfo, out var settings))
         {
-            throw new ArgumentException($"Invalid setting name '{name}'.");
-        }
-
-        if (Connections.TryGetValue(name, out var foundInfo))
-        {
-            return foundInfo.Info as T;
+            return foundConnectionInfo;
         }
 
         var result = await PortForwardAsync(settings.ServiceName, settings.Port, cancellationToken);
@@ -72,22 +71,46 @@ internal class KubernetesEnvironment : IEnvironment
     private async Task<T> GetConnectionInfoAsync<T>(string name, CancellationToken cancellationToken)
         where T : class
     {
-        if (!Settings.TryGetValue(name, out var settings))
+        if (DateTimeOffset.UtcNow - SetupTime > PortForwardConnectionAliveInterval)
         {
-            throw new ArgumentException($"Invalid setting name '{name}'.");
+            await SetupAsync(cancellationToken);
         }
 
-        if (Connections.TryGetValue(name, out var foundInfo))
+        if (!TryGetConnectionInfo<T>(name, out var foundConnectionInfo, out _))
         {
-            return foundInfo.Info as T;
+            return foundConnectionInfo;
         }
 
         throw new InvalidOperationException($"Retrieved null connectionInfo '{name}'.");
     }
 
+    private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, out ServiceSettings settings)
+        where T : class
+    {
+        if (!Settings.TryGetValue(name, out settings))
+        {
+            throw new NotSupportedException($"Invalid setting name '{name}'.");
+        }
+
+        if (Connections.TryGetValue(name, out var foundInfo))
+        {
+            var found = foundInfo.Info as T;
+            if (found == null)
+            {
+                throw new InvalidOperationException($"Found null info for connection with name '{name}'.");
+            }
+            connectionInfo = found;
+            return true;
+        }
+
+        connectionInfo = null;
+        return false;
+    }
+
     public async Task SetupAsync(CancellationToken cancellationToken)
     {
         Logger.LogInformation("Setting up kubernetes environment for testing.");
+        Connections.Clear();
 
         _ = await this.GetOrCreateConnectionInfoAsync(
             nameof(RabbitMQConnectionInfo),
@@ -135,6 +158,7 @@ internal class KubernetesEnvironment : IEnvironment
             cancellationToken);
 
         NewAccountAccessKey = await this.GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
+        SetupTime = DateTimeOffset.UtcNow;
     }
 
     private async Task<PortForwardResult> PortForwardAsync(string serviceName, int port, CancellationToken cancellationToken)
