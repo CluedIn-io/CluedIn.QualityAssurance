@@ -16,7 +16,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     private List<string> ObservedQueueRegexes { get; } = new ()
     {
         @".*Messages.*\.(.*Command).*",
-        @"clue_(datasource)_process_.*",
+        @"clue_(datasource)_process_(.*)",
     };
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
