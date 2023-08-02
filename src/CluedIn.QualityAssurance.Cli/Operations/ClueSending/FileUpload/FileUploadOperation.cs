@@ -28,54 +28,57 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
 
     protected override Task ExecuteIngestionAsync(CancellationToken cancellationToken)
     {
-        return CommitDataSetAsync(cancellationToken);
+        return CommitAllDataSetAsync(cancellationToken);
     }
 
-    protected override IEnumerable<Func<CancellationToken, Task>> GetSetupOperations(bool isReingestion)
+    protected override async Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken)
     {
-        var operations = new List<Func<CancellationToken, Task>>();
+        var operations = new List<SetupOperation>();
 
         if (isReingestion)
         {
-            operations.Add(LoginAsync);
-            operations.Add(SubmitSampleClueAsync); // not really necessary.
+            operations.Add(new SetupOperation(LoginAsync));
+            operations.Add(new SetupOperation(SubmitSampleClueAsync)); // not really necessary.
         }
         else
         {
-            operations.Add(CreateOrganizationAsync);
-            operations.Add(LoginAsync);
-            operations.Add(SubmitSampleClueAsync);
-            operations.Add(CreateDataSourceSetAsync);
-            operations.Add(UploadFileAsync);
-            operations.Add(GetDataSetIdAsync);
-            operations.Add(AutoAnnotateAsync);
-            operations.Add(GetAnnotationIdAsync);
-            AddMappingModifications(operations);
+            operations.Add(new SetupOperation(CreateOrganizationAsync));
+            operations.Add(new SetupOperation(LoginAsync));
+            operations.Add(new SetupOperation(SubmitSampleClueAsync));
+            foreach (var fileSource in FileSources)
+            {
+                operations.Add(CreateSetupOperation(fileSource, CreateDataSourceSetAsync));
+                operations.Add(CreateSetupOperation(fileSource, UploadFileAsync));
+                operations.Add(CreateSetupOperation(fileSource, GetDataSetIdAsync));
+                operations.Add(CreateSetupOperation(fileSource, AutoAnnotateAsync));
+                operations.Add(CreateSetupOperation(fileSource, GetAnnotationIdAsync));
+                await AddMappingModificationsAsync(fileSource, operations, cancellationToken).ConfigureAwait(false);
+            }
         }
         return operations;
     }
 
-    private async Task UploadFileAsync(CancellationToken cancellationToken)
+    private async Task UploadFileAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
 
-        var requestUri = new Uri(serverUris.UploadApiUri, $"api/datasourceset/{FileSource.DataSourceSetId}/file");
+        var requestUri = new Uri(serverUris.UploadApiUri, $"api/datasourceset/{fileSource.DataSourceSetId}/file");
         using (var multipartFormContent = new MultipartFormDataContent())
         {
             //Load the file and set the file's Content-Type header
-            var stream = GetUploadFileStream();
+            var stream = GetUploadFileStream(fileSource);
             var fileStreamContent = new StreamContent(stream);
-            fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue(GetMimeType(FileSource.UploadFilePath));
+            fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue(GetMimeType(fileSource.UploadFilePath));
 
             //Add the file
-            multipartFormContent.Add(fileStreamContent, name: FileSource.UploadFilePath, fileName: FileSource.UploadFilePath);
+            multipartFormContent.Add(fileStreamContent, name: fileSource.UploadFilePath, fileName: fileSource.UploadFilePath);
 
             //Send it
             var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
             {
                 Content = multipartFormContent,
             };
-            requestMessage.Headers.Add("name", FileSource.UploadFilePath);
+            requestMessage.Headers.Add("name", fileSource.UploadFilePath);
             requestMessage.Headers.Add("clientId", Organization.ClientId);
             var response = await SendRequestAsync(requestMessage, cancellationToken, true, client => client.Timeout = Timeout.InfiniteTimeSpan).ConfigureAwait(false);
             var result = await response.Content.DeserializeToAnonymousTypeAsync(new
@@ -84,7 +87,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
             });
             int? dataSourceId = result?.id ?? throw new InvalidOperationException("DataSourceId is not found in result.");
 
-            FileSource.DataSourceId = dataSourceId.Value;
+            fileSource.DataSourceId = dataSourceId.Value;
         }
     }
 
@@ -103,7 +106,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
         };
     }
 
-    private async Task GetDataSetIdAsync(CancellationToken cancellationToken)
+    private async Task GetDataSetIdAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         for (var i = 0; i < TotalGetDataSetIdRetries; ++i)
         {
@@ -114,7 +117,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
             }
             try
             {
-                var response = await GetDataSourceByIdAsync(cancellationToken).ConfigureAwait(false);
+                var response = await GetDataSourceByIdAsync(fileSource, cancellationToken).ConfigureAwait(false);
                 var result = await response.Content
                     .DeserializeToAnonymousTypeAsync(new
                     {
@@ -140,9 +143,9 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
                         },
                     }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
 
-                Guid? dataSetId = result.data?.inbound?.dataSource?.dataSets?.SingleOrDefault(x => x?.dataSource?.id == FileSource.DataSourceId)?.id ?? throw new InvalidOperationException("DataSetId is not found in result.");
+                Guid? dataSetId = result.data?.inbound?.dataSource?.dataSets?.SingleOrDefault(x => x?.dataSource?.id == fileSource.DataSourceId)?.id ?? throw new InvalidOperationException("DataSetId is not found in result.");
 
-                FileSource.DataSetId = dataSetId.Value;
+                fileSource.DataSetId = dataSetId.Value;
                 return;
             }
             catch (Exception ex)
@@ -155,14 +158,19 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
         throw new InvalidOperationException("Failed to get dataset id after multiple tries");
     }
 
-    private async Task CommitDataSetAsync(CancellationToken cancellationToken)
+    private async Task CommitAllDataSetAsync(CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task CommitDataSetAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
         var body = await GetRequestTemplateAsync(nameof(CommitDataSetAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", FileSource.DataSetId.ToString());
+        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

@@ -109,14 +109,14 @@ internal class ValidateEdgeOperation : RawCluesOperation<ValidateEdgeCreationOpt
         EdgeExporter.Initialize(Options.OutputDirectory, neo4jConnection.BoltUri.ToString(), neo4jConnection.UserName, neo4jConnection.Password);
     }
 
-    protected override IEnumerable<Func<CancellationToken, Task>> GetSetupOperations(bool isReingestion)
+    protected override async Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken)
     {
-        var operations = new List<Func<CancellationToken, Task>>
+        var operations = new List<SetupOperation>
         {
-            InitializeEdgeExporterAsync
+            new SetupOperation(InitializeEdgeExporterAsync)
         };
 
-        operations.AddRange(base.GetSetupOperations(isReingestion));
+        operations.AddRange(await base.GetSetupOperationsAsync(isReingestion, cancellationToken).ConfigureAwait(false));
 
         return operations;
     }
