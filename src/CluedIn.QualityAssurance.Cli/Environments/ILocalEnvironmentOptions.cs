@@ -19,10 +19,10 @@ internal interface ILocalRabbitMqOptions
     [Option("rabbitmq-management-uri", Default = "http://localhost:15672/", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ Management Uri. If credentials are required, it should NOT be included.")]
     string RabbitMQManagementUri { get; set; }
 
-    [Option("rabbitmq-username", Default = "guest", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ username.")]
+    [Option("rabbitmq-username", Default = "cluedin", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ username.")]
     string RabbitUserName { get; set; }
 
-    [Option("rabbitmq-password", Default = "guest", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ password.")]
+    [Option("rabbitmq-password", Default = "cluedin", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ password.")]
     string RabbitUserPassword { get; set; }
 }
 internal interface ILocalSqlServerOptions
