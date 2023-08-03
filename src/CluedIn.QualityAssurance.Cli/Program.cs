@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
 using CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
+using Serilog.Core;
 
 namespace CluedIn.QualityAssurance.Cli;
 
@@ -42,8 +43,13 @@ internal class Program
                         })
                         .UseSerilog((hostBuilder, loggerConfiguration) =>
                         {
-                            loggerConfiguration.MinimumLevel.Override("Microsoft", LogEventLevel.Warning);
-                            loggerConfiguration.MinimumLevel.Override("System", LogEventLevel.Warning);
+                            const string OutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}";
+                            loggerConfiguration
+                                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                                .MinimumLevel.Override("System", LogEventLevel.Warning)
+                                .Enrich.FromLogContext()
+                                .Enrich.With(new RemovePropertiesEnricher())
+                                .WriteTo.Console(outputTemplate: OutputTemplate);
 
                             var operationOptions = options as IOperationOptions;
                             if (operationOptions != null)
@@ -59,6 +65,11 @@ internal class Program
                                     _ => LogEventLevel.Debug,
                                 };
                                 loggerConfiguration.MinimumLevel.Is(serilogLevel);
+
+                                if (!string.IsNullOrWhiteSpace(operationOptions.LogFilePath))
+                                {
+                                    loggerConfiguration.WriteTo.File(operationOptions.LogFilePath, outputTemplate: OutputTemplate);
+                                }
                             }
                             else
                             {
@@ -67,7 +78,6 @@ internal class Program
                                     loggerConfiguration.MinimumLevel.Warning();
                                 }
                             }
-                            loggerConfiguration.WriteTo.Console();
                         })
                         .Build();
             var logger = host.Services.GetRequiredService<ILogger<Program>>();
@@ -226,5 +236,16 @@ internal class Program
 
         services.AddTransient<IPostOperationAction, EntitiesCountAssertionAction>();
         services.AddTransient<IPostOperationAction, MetricsAssertionAction>();
+    }
+
+    /// <summary>
+    /// Adapted from: https://stackoverflow.com/a/47191498
+    /// </summary>
+    class RemovePropertiesEnricher : ILogEventEnricher
+    {
+        public void Enrich(LogEvent le, ILogEventPropertyFactory lepf)
+        {
+            le.RemovePropertyIfPresent("SourceContext");
+        }
     }
 }
