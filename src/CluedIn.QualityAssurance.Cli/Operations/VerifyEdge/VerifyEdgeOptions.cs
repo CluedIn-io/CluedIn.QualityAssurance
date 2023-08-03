@@ -29,4 +29,6 @@ internal class VerifyEdgeOptions : IOperationOptions, ILocalNeo4jOptions
     public string IdSuffix { get; set; }
 
     public LogLevel LogLevel { get; set; }
+
+    public string? LogFilePath { get; set; }
 }

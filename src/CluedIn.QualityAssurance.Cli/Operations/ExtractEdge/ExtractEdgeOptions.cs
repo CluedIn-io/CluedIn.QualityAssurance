@@ -29,4 +29,6 @@ internal class ExtractEdgeOptions : IOperationOptions, ILocalNeo4jOptions
     public IEnumerable<string> Mappings { get; set; }
 
     public LogLevel LogLevel { get; set; }
+
+    public string? LogFilePath { get; set; }
 }

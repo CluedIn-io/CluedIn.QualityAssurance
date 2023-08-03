@@ -90,4 +90,6 @@ internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationO
     public IEnumerable<string> AllowedPostOperationActions { get; set; }
 
     public LogLevel LogLevel { get; set; }
+
+    public string? LogFilePath { get; set; }
 }
