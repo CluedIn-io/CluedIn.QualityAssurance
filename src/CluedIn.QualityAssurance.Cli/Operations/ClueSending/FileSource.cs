@@ -8,6 +8,8 @@ internal class FileSource
 
     public Guid DataSetId { get; set; }
 
+    public Guid FileId { get; set; }
+
     public int AnnotationId { get; set; }
 
     public string UploadFilePath { get; set; }
