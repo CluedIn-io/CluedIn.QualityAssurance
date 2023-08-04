@@ -160,6 +160,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         }
 
         PopulateQueueStats(result, await completionCheckerTask.ConfigureAwait(false), cancellationToken);
+        await CustomizeResultAsync(result, cancellationToken).ConfigureAwait(false);
         result.MemoryStatistics.After = await Environment.GetAvailableMemoryInMegabytesAsync(cancellationToken).ConfigureAwait(false);
 
         if (Options.SkipPostOperationActions)
@@ -186,6 +187,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         return result;
     }
+
+    protected virtual Task CustomizeResultAsync(SingleIterationOperationResult result, CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected abstract Task ExecuteIngestionAsync(CancellationToken cancellationToken);
 

@@ -117,6 +117,12 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
         };
     }
 
+    protected override Task CustomizeResultAsync(SingleIterationOperationResult result, CancellationToken cancellationToken)
+    {
+        result.Output["FileSources"] = FileSources;
+        return Task.CompletedTask;
+    }
+
     protected async Task SendCustomMappingRequestAsync(FileSource fileSource, CustomMappingRequest mappingRequest, CancellationToken cancellationToken)
     {
         Logger.LogDebug("Begin sending custom mapping request '{CustomMappingRequestName}'", mappingRequest.Name);
