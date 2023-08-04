@@ -26,7 +26,7 @@
     },
     "Ingestion Endpoint Local": {
       "commandName": "Project",
-      "commandLineArgs": "ingestion-endpoint --local -n 2 --output-directory c:\\temp\\qatool\\output --log-levefl \"Debug\""
+      "commandLineArgs": "ingestion-endpoint --local -n 2 --output-directory c:\\temp\\qatool\\output --log-level \"Debug\""
     },
     "Ingestion Endpoint Kubernetes": {
       "commandName": "Project",
@@ -40,13 +40,13 @@
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --kubernetes --server-url \"https://127.0.0.1.nip.io\" -n 2 --context-name \"minikube\" --namespace \"default\" --is-reingestion --output-directory c:\\temp\\qatool\\output"
     },
+    "Directory File Upload Local": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug"
+    },
     "Directory Ingestion Endpoint Local": {
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output"
-    },
-    "Directory Ingestion Endpoint Kubernetes": {
-      "commandName": "Project",
-      "commandLineArgs": "ingestion-endpoint --kubernetes --server-url \"https://127.0.0.1.nip.io\" -n 2 --context-name \"minikube\" --namespace \"default\" --output-directory c:\\temp\\qatool\\output"
     },
     "Show Help": {
       "commandName": "Project",

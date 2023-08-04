@@ -13,7 +13,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation<TOptions, MultiIterationOperationResult, SingleIterationOperationResult>
     where TOptions : IClueSendingOperationOptions
 {
-    private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(10);
     public ClueSendingOperation(
         ILogger<ClueSendingOperation<TOptions>> logger,
         IEnvironment environment,

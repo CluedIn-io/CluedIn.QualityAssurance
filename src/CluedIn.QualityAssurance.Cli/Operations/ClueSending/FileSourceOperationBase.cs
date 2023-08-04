@@ -18,6 +18,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation<TOptions>
     where TOptions : IClueSendingOperationOptions, IFileSourceOperationOptions
 {
+    private const int MaximumKeyPrefixLength = 50;
     private static readonly Regex InvalidEntityTypeNameRegex = new Regex("[^a-zA-Z0-9]");
     public FileSourceOperationBase(
         ILogger<FileSourceOperationBase<TOptions>> logger,
@@ -206,7 +207,12 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
         {
             var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file);
             var sanitizedFileName = InvalidEntityTypeNameRegex.Replace(fileNameWithoutExtension, string.Empty);
-            var entityType = $"testEntityx{testId}x{index}x{sanitizedFileName}";
+            var entityType = $"testx{testId}x{index}x{sanitizedFileName}";
+            if (entityType.Length > FileSourceOperationBase<TOptions>.MaximumKeyPrefixLength)
+            {
+                entityType = entityType.Substring(0, MaximumKeyPrefixLength);
+            }
+
             return new FileSource
             {
                 UploadFilePath = file,
