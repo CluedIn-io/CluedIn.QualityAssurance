@@ -2,7 +2,7 @@
   "operationName": "createDataSourceSet",
   "variables": {
     "dataSourceSet": {
-      "name": "My Dataset Name",
+      "name": "{{DataSourceSetName}}",
       "author": "{{UserId}}"
     }
   },

@@ -1,0 +1,24 @@
+{
+  "operationName": "createManualAnnotation",
+  "variables": {
+    "dataSetId": "{{DataSetId}}",
+    "type": "file",
+    "mappingConfiguration": {
+      "entityTypeConfiguration": {
+        "icon": "Twitter",
+        "new": false,
+        "displayName": "{{EntityType}}",
+        "entityType": "/{{EntityType}}"
+      },
+      "ignoredFields": [],
+      "vocabularyConfiguration": {
+        "new": false,
+        "keyPrefix": "{{VocabularyName}}",
+        "vocabularyName": "{{VocabularyName}}",
+        "vocabularyId": "{{VocabularyId}}"
+      }
+    },
+    "isDynamicVocab": true
+  },
+  "query": "mutation createManualAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {\n  management {\n    createManualAnnotation(\n      dataSetId: $dataSetId\n      type: $type\n      mappingConfiguration: $mappingConfiguration\n      isDynamicVocab: $isDynamicVocab\n    ) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
+}

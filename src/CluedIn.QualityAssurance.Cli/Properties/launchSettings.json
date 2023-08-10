@@ -42,11 +42,11 @@
     },
     "Directory File Upload Local": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug"
+      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
     },
     "Directory Ingestion Endpoint Local": {
       "commandName": "Project",
-      "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output"
+      "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --use-short-test-id"
     },
     "Show Help": {
       "commandName": "Project",

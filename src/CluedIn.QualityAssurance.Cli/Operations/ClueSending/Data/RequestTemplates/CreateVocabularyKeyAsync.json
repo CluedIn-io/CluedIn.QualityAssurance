@@ -1,0 +1,15 @@
+{
+  "operationName": "createVocabulary",
+  "variables": {
+    "vocabularyKey": {
+      "vocabularyId": "{{VocabularyId}}",
+      "displayName": "{{VocabularyKeyName}}",
+      "name": "{{VocabularyKeyName}}",
+      "groupName": "{{VocabularyKeyGroup}}",
+      "isVisible": true,
+      "dataType": "{{VocabularyKeyType}}",
+      "description": ""
+    }
+  },
+  "query": "mutation createVocabulary($vocabularyKey: InputVocabularyKey) {\n  management {\n    id\n    createVocabularyKey(vocabularyKey: $vocabularyKey) {\n      ...VocabularyKey\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment VocabularyKey on VocabularyKey {\n  displayName\n  vocabularyKeyId\n  vocabularyId\n  name\n  isVisible\n  isCluedInCore\n  isDynamic\n  isProvider\n  isObsolete\n  groupName\n  key\n  storage\n  dataClassificationCode\n  dataType\n  description\n  dataAnnotationsIsPrimaryKey\n  dataAnnotationsIsEditable\n  dataAnnotationsIsNullable\n  dataAnnotationsIsRequired\n  dataAnnotationsMinimumLength\n  dataAnnotationsMaximumLength\n  providerId\n  compositeVocabularyId\n  compositeVocabulary {\n    name\n    displayName\n    dataType\n    __typename\n  }\n  mapsToOtherKeyId\n  glossaryTermId\n  createdAt\n  createdBy\n  mappedKey\n  isValueChangeInsignificant\n  connector {\n    id\n    name\n    about\n    icon\n    type\n    __typename\n  }\n  vocabulary {\n    vocabularyId\n    vocabularyName\n    connector {\n      id\n      name\n      about\n      icon\n      __typename\n    }\n    __typename\n  }\n  author {\n    id\n    username\n    __typename\n  }\n  __typename\n}\n"
+}

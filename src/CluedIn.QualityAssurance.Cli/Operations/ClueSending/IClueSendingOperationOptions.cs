@@ -26,4 +26,8 @@ internal interface IClueSendingOperationOptions : IMultiIterationOptions
     [Option("allowed-post-operation-actions", Default = null, Required = false,
         HelpText = "Allowed post operation actions. Only post operation actions with these names will be run.")]
     public IEnumerable<string> AllowedPostOperationActions { get; set; }
+
+    [Option("use-short-test-id", Default = null, Required = false,
+        HelpText = "Generates a shorter test id so that entity types does not have a long prefix.")]
+    public bool UseShortTestIdPrefix { get; set; }
 }
