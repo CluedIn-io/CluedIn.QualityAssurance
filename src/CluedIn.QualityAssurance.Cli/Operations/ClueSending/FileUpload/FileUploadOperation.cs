@@ -63,9 +63,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
                 }
 
                 operations.Add(CreateSetupOperation(fileSource, GetDataSetIdAsync));
-                operations.Add(CreateSetupOperation(fileSource, AutoAnnotateAsync));
-                operations.Add(CreateSetupOperation(fileSource, GetAnnotationIdAsync));
-                await AddMappingModificationsAsync(fileSource, operations, cancellationToken).ConfigureAwait(false);
+                await AddMappingOperationsAsync(operations, fileSource, cancellationToken).ConfigureAwait(false);
             }
         }
         return operations;

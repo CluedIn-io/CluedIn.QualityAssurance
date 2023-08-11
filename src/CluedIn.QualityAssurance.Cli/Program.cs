@@ -113,7 +113,6 @@ internal class Program
                 logger.LogError(ex, ex.Message);
             }
         });
-
         return exitCode;
     }
 

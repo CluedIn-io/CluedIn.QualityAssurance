@@ -5,15 +5,16 @@
     "type": "file",
     "mappingConfiguration": {
       "entityTypeConfiguration": {
-        "icon": "Linkedin",
-        "new": true,
+        "icon": "Twitter",
+        "new": false,
         "displayName": "{{EntityType}}",
         "entityType": "/{{EntityType}}"
       },
       "vocabularyConfiguration": {
-        "new": true,
-        "keyPrefix": "{{VocabularyKey}}",
-        "vocabularyName": "{{VocabularyKey}}"
+        "new": false,
+        "keyPrefix": "{{VocabularyName}}",
+        "vocabularyName": "{{VocabularyName}}",
+        "vocabularyId": "{{VocabularyId}}"
       }
     },
     "isDynamicVocab": true

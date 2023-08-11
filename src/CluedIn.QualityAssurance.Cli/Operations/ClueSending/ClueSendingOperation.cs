@@ -13,7 +13,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation<TOptions, MultiIterationOperationResult, SingleIterationOperationResult>
     where TOptions : IClueSendingOperationOptions
 {
-    private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(1);
     public ClueSendingOperation(
         ILogger<ClueSendingOperation<TOptions>> logger,
         IEnvironment environment,
@@ -160,6 +160,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         }
 
         PopulateQueueStats(result, await completionCheckerTask.ConfigureAwait(false), cancellationToken);
+        await CustomizeResultAsync(result, cancellationToken).ConfigureAwait(false);
         result.MemoryStatistics.After = await Environment.GetAvailableMemoryInMegabytesAsync(cancellationToken).ConfigureAwait(false);
 
         if (Options.SkipPostOperationActions)
@@ -175,7 +176,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
                 if (Options.AllowedPostOperationActions != null && Options.AllowedPostOperationActions.Any()
                     && !Options.AllowedPostOperationActions.Contains(currentActionName))
                 {
-                    Logger.LogInformation("Running post operation actions {PostOperationActionName} because it's not in allowed list.", currentActionName);
+                    Logger.LogInformation("Skipping post operation actions {PostOperationActionName} because it's not in allowed list.", currentActionName);
                     continue;
                 }
 
@@ -186,6 +187,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         return result;
     }
+
+    protected virtual Task CustomizeResultAsync(SingleIterationOperationResult result, CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected abstract Task ExecuteIngestionAsync(CancellationToken cancellationToken);
 
@@ -224,7 +227,14 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
     protected virtual string CreateTestId(int iterationNumber)
     {
-        return $"{OverallResult.StartTime.ToString("yyyyMMddHHmmss")}x{iterationNumber}";
+        if (Options.UseShortTestIdPrefix)
+        {
+            return $"{OverallResult.StartTime.ToString("MMddHHmm")}x{iterationNumber}";
+        }
+        else
+        {
+            return $"{OverallResult.StartTime.ToString("yyyyMMddHHmmss")}x{iterationNumber}";
+        }
     }
 
     protected abstract Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken);
@@ -392,6 +402,21 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         return await reader.ReadToEndAsync().ConfigureAwait(false);
     }
 
+    protected SetupOperation CreateSetupOperation<T1>(T1 t1, Func<T1, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    {
+        return new SetupOperation(
+            cancellationToken => func(t1, cancellationToken),
+            func.Method.Name,
+            loggingScopeState);
+    }
+    protected SetupOperation CreateSetupOperation<T1, T2>(T1 t1, T2 t2, Func<T1, T2, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    {
+        return new SetupOperation(
+            cancellationToken => func(t1, t2, cancellationToken),
+            func.Method.Name,
+            loggingScopeState);
+    }
+
     private void PopulateQueueStats(SingleIterationOperationResult result, RabbitMQCompletionResult rabbitMqCompletionResult, CancellationToken cancellationToken)
     {
         foreach (var current in rabbitMqCompletionResult.QueuePollingHistory)
@@ -414,5 +439,5 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             });
         }
     }
-    protected record SetupOperation(Func<CancellationToken, Task> Function, string? Name = null, Dictionary<string, object> LoggingScopeState = null);
+    protected record SetupOperation(Func<CancellationToken, Task> Function, string? Name = null, Dictionary<string, object>? LoggingScopeState = null);
 }

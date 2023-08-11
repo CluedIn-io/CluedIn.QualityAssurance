@@ -1,0 +1,7 @@
+{
+  "operationName": "createEntityTypeConfigurationV2",
+  "variables": {
+    "entityTypeConfiguration": "{\"type\":\"/{{EntityType}}\",\"active\":true,\"displayName\":\"{{EntityType}}\",\"icon\":\"Twitter\",\"route\":\"{{EntityTypeRoute}}\",\"pageTemplateId\":\"\"}"
+  },
+  "query": "mutation createEntityTypeConfigurationV2($entityTypeConfiguration: String!) {\n  management {\n    createEntityTypeConfigurationV2(\n      entityTypeConfiguration: $entityTypeConfiguration\n    )\n    __typename\n  }\n}\n"
+}

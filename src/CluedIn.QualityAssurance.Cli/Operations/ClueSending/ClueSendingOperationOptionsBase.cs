@@ -92,4 +92,6 @@ internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationO
     public LogLevel LogLevel { get; set; }
 
     public string? LogFilePath { get; set; }
+
+    public bool UseShortTestIdPrefix { get; set; }
 }

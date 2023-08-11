@@ -52,9 +52,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
                 operations.Add(CreateSetupOperation(fileSource, CreateDataSourceAsync));
                 operations.Add(CreateSetupOperation(fileSource, CreateDataSetAsync));
                 operations.Add(CreateSetupOperation(fileSource, SendSampleDataAsync));
-                operations.Add(CreateSetupOperation(fileSource, AutoAnnotateAsync));
-                operations.Add(CreateSetupOperation(fileSource, GetAnnotationIdAsync));
-                await AddMappingModificationsAsync(fileSource, operations, cancellationToken).ConfigureAwait(false);
+                await AddMappingOperationsAsync(operations, fileSource, cancellationToken).ConfigureAwait(false);
                 operations.Add(CreateSetupOperation(fileSource, ModifyDataSetAutoSubmitAsync));
             }
         }

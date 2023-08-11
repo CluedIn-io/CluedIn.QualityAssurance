@@ -1,0 +1,18 @@
+{
+  "operationName": "createVocabulary",
+  "variables": {
+    "vocabulary": {
+      "vocabularyName": "{{VocabularyName}}",
+      "entityTypeConfiguration": {
+        "icon": "Twitter",
+        "new": false,
+        "displayName": "{{EntityType}}",
+        "entityType": "/{{EntityType}}"
+      },
+      "providerId": "",
+      "keyPrefix": "{{VocabularyName}}",
+      "description": ""
+    }
+  },
+  "query": "mutation createVocabulary($vocabulary: InputVocabulary) {\n  management {\n    id\n    createVocabulary(vocabulary: $vocabulary) {\n      ...Vocabulary\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment Vocabulary on Vocabulary {\n  vocabularyId\n  vocabularyName\n  keyPrefix\n  isCluedInCore\n  entityTypeConfiguration {\n    icon\n    entityType\n    displayName\n    __typename\n  }\n  isDynamic\n  isProvider\n  isActive\n  grouping\n  createdAt\n  providerId\n  description\n  connector {\n    id\n    name\n    about\n    icon\n    __typename\n  }\n  __typename\n}\n"
+}
