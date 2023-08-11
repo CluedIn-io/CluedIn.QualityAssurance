@@ -86,4 +86,6 @@ internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationO
     public bool IsKubernetesEnvironment { get; set; }
 
     public LogLevel LogLevel { get; set; }
+
+    public string? LogFilePath { get; set; }
 }
