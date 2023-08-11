@@ -11,6 +11,7 @@ using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.Text.RegularExpressions;
 using CluedIn.Core;
+using CluedIn.Core.Data.Vocabularies;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -191,14 +192,18 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
             Logger.LogInformation("Using custom vocabularies {CustomVocabularies} and its keys.", vocabulariesToCreate.Select(x => x.Name));
             foreach (var current in vocabulariesToCreate)
             {
-                operations.Add(CreateSetupOperation(fileSource, current, CreateCustomVocabularyAsync));
+                var loggingScopeState = CreateLoggingScopeState(fileSource);
+                loggingScopeState.Add("CustomVocabularyName", current.Name);
+                operations.Add(CreateSetupOperation(fileSource, current, CreateCustomVocabularyAsync, loggingScopeState));
             }
         }
 
         Logger.LogInformation("Using custom mapping {CustomMapping}.", customMapping.MappingRequests.Select(x => x.Name));
         foreach (var current in customMapping.MappingRequests)
         {
-            operations.Add(CreateSetupOperation(fileSource, current, SendCustomMappingRequestAsync, CreateLoggingScopeState(fileSource)));
+            var loggingScopeState = CreateLoggingScopeState(fileSource);
+            loggingScopeState.Add("MappingRequestName", current.Name);
+            operations.Add(CreateSetupOperation(fileSource, current, SendCustomMappingRequestAsync, loggingScopeState));
         }
     }
 
@@ -390,6 +395,11 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
     protected async Task CreateCustomVocabularyAsync(FileSource fileSource, CustomVocabulary vocabulary, CancellationToken cancellationToken)
     {
         var mappedName = SanitizeForVocabularyName(vocabulary.Name);
+        Logger.LogInformation("Mapping CustomVocabularyName {CustomVocabularyName} to {MappedCustomVocabularyName}.", vocabulary.Name, mappedName);
+        using var vocabularyScope = Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["MappedCustomVocabularyName"] = mappedName,
+        });
         // TODO: allow setting of custom entity type instead of just fileSource.EntityType
         var vocabularyId = await CreateVocabularyIfNotExistsAsync(mappedName, fileSource.EntityType, cancellationToken);
 
@@ -406,6 +416,10 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
         
         foreach (var vocabularyKey in vocabulary.Keys)
         {
+            using var vocabularyKeyScope = Logger.BeginScope(new Dictionary<string, object>
+            {
+                ["CustomVocabularyKeyName"] = vocabularyKey.Name,
+            });
             if (keys.Any(key => key.Name == vocabularyKey.Name))
             {
                 Logger.LogInformation("Skiping creation of VocabularyKeyName {VocabularyKeyName} because it exists.", vocabularyKey.Name);
