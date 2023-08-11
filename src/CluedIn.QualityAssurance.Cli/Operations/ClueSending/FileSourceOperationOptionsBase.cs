@@ -3,4 +3,5 @@
 internal abstract class FileSourceOperationOptionsBase : ClueSendingOperationOptionsBase, IFileSourceOperationOptions
 {
     public string InputFilePath { get; set; }
+    public string InputDirectoryPath { get; set; }
 }

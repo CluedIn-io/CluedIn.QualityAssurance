@@ -46,21 +46,21 @@ internal abstract class RawCluesOperation<TOptions> : ClueSendingOperation<TOpti
         return StreamToRawClueEndpointAsync(cancellationToken);
     }
 
-    protected override IEnumerable<Func<CancellationToken, Task>> GetSetupOperations(bool isReingestion)
+    protected override Task<IEnumerable<SetupOperation>> GetSetupOperationsAsync(bool isReingestion, CancellationToken cancellationToken)
     {
-        var operations = new List<Func<CancellationToken, Task>>();
+        var operations = new List<SetupOperation>();
 
         if (isReingestion)
         {
-            operations.Add(LoginAsync);
+            operations.Add(new SetupOperation(LoginAsync));
         }
         else
         {
-            operations.Add(CreateOrganizationAsync);
-            operations.Add(LoginAsync);
+            operations.Add(new SetupOperation(CreateOrganizationAsync));
+            operations.Add(new SetupOperation(LoginAsync));
         }
 
-        return operations;
+        return Task.FromResult<IEnumerable<SetupOperation>>(operations);
     }
 
     private async Task StreamToRawClueEndpointAsync(CancellationToken cancellationToken)
