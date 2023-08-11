@@ -185,6 +185,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             }
         }
 
+        Logger.LogInformation("Finished processing result for {Organization}.", Organization.ClientId);
         return result;
     }
 
