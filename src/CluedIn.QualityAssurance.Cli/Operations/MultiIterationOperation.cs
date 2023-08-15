@@ -31,6 +31,7 @@ internal abstract class MultiIterationOperation<TOptions, TOverallResult, TItera
 
         for (var i = 0; i < Options.TotalIterations; ++i)
         {
+            Logger.LogInformation("Running iteration {IterationNumber} of {TotalIterations}.", i + 1, Options.TotalIterations);
             if (cancellationToken.IsCancellationRequested)
             {
                 Logger.LogInformation("Cancellation has been requested. Will skip processing further iterations.");
