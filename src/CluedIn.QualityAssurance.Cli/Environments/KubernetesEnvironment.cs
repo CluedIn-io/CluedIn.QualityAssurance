@@ -76,7 +76,7 @@ internal class KubernetesEnvironment : IEnvironment
             await SetupAsync(cancellationToken);
         }
 
-        if (!TryGetConnectionInfo<T>(name, out var foundConnectionInfo, out _))
+        if (TryGetConnectionInfo<T>(name, out var foundConnectionInfo, out _))
         {
             return foundConnectionInfo;
         }
