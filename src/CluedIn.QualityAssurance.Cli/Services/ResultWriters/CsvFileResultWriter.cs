@@ -2,6 +2,7 @@
 using System.Text.Json;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 
@@ -41,10 +42,6 @@ internal class CsvFileResultWriter : IResultWriter
                     {
                         dictionary.Add(currentCustomColumn.Key, currentCustomColumn.Value);
                     }
-                    else
-                    {
-                        dictionary.Add(currentCustomColumn.Key, JsonSerializer.Serialize(currentCustomColumn.Value));
-                    }
                 }
 
                 foreach (var currentQueue in current.QueuePollingHistory)
@@ -60,7 +57,6 @@ internal class CsvFileResultWriter : IResultWriter
             });
 
             var allKeys = records.SelectMany(record => record.Keys).ToHashSet();
-
             var outputFilePath = Path.Combine(outputDirectoryPath, "results.csv");
             using var writer = new StreamWriter(outputFilePath);
             using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
@@ -84,7 +80,7 @@ internal class CsvFileResultWriter : IResultWriter
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error trying to save json result");
+            Logger.LogError(ex, "Error trying to save csv result.");
         }
 
     }
