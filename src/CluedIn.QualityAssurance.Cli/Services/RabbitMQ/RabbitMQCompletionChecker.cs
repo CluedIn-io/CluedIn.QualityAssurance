@@ -8,6 +8,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 {
     private static readonly TimeSpan DelayBetweenQueuePolls = TimeSpan.FromSeconds(3);
     private const int TotalSampleSizeForPatterns = 5;
+    private const int MaximumConsecutivePollErrors = 20;
 
     private ILogger<RabbitMQCompletionChecker> Logger { get; }
 
@@ -59,6 +60,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         Logger.LogInformation("Start polling for completion.");
 
         var hasStartedProcessing = false;
+        int totalConsecutiveErrors = 0;
         while (true)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -69,49 +71,77 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 return new(startTime, DateTimeOffset.UtcNow, new());
             }
 
-            var results = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
-            if (results.Any(results => results.CurrentQueueInfo.Messages.Count != 0))
-            {
-                hasStartedProcessing = true;
-            }
 
-            var utcNow = DateTimeOffset.UtcNow;
-            var shouldShowLog = (utcNow - lastShowProgressTime).TotalMinutes > 1;
-            var criticalQueueInfos = CriticalQueueCheckers.Select(checker => checker.Value.HistoricalQueueInfo);
-            if (!hasStartedProcessing && criticalQueueInfos.All(info => info.Last().Published.Count == info.First().Published.Count))
+            try
             {
+                var results = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+                if (results.Any(results => results.CurrentQueueInfo.Messages.Count != 0))
+                {
+                    hasStartedProcessing = true;
+                }
+
+                var utcNow = DateTimeOffset.UtcNow;
+                var shouldShowLog = (utcNow - lastShowProgressTime).TotalMinutes > 1;
+                var criticalQueueInfos = CriticalQueueCheckers.Select(checker => checker.Value.HistoricalQueueInfo);
+                if (!hasStartedProcessing && criticalQueueInfos.All(info => info.Last().Published.Count == info.First().Published.Count))
+                {
+                    if (shouldShowLog)
+                    {
+                        Logger.LogInformation("None of the queues have any messages yet. No messages went through processing queue.");
+                    }
+                }
+                else if (results.All(results => results.CurrentQueueInfo.Messages.Count == 0 && results.IsComplete))
+                {
+                    if (shouldShowLog)
+                    {
+                        Logger.LogInformation("All queues message count are zero and marked as completed. Processing is completed.");
+                    }
+
+                    foreach (var currentResult in results)
+                    {
+                        Logger.LogDebug("Queue {QueueName} completed at {EndTime}", currentResult.CurrentQueueInfo.QueueName, currentResult.CompletedInfo?.PolledAt);
+                    }
+
+                    var endTime = results.Where(result => result.CompletedInfo != null).Max(result => result.CompletedInfo.PolledAt);
+                    var pollingHistoryWithActivity = AllQueueCheckers
+                        .Where(checker => checker.HistoricalQueueInfo.Select(info => info.Published).Distinct().Count() > 1);
+
+                    var queuePollingHistory = pollingHistoryWithActivity
+                        .ToDictionary(checker => checker.QueueName, checker => new QueuePollingHistory(checker.QueueName, checker.ShortQueueName, checker.HistoricalQueueInfo));
+
+                    AddForceIncludeQueues(queuePollingHistory);
+                    return new(startTime, endTime, queuePollingHistory);
+                }
+
                 if (shouldShowLog)
                 {
-                    Logger.LogInformation("None of the queues have any messages yet. No messages went through processing queue.");
+                    Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Processing is NOT YET completed.");
+                    lastShowProgressTime = utcNow;
                 }
-            }
-            else if (results.All(results => results.CurrentQueueInfo.Messages.Count == 0 && results.IsComplete))
+                totalConsecutiveErrors = 0;
+            } 
+            catch (Exception ex)
             {
-                if (shouldShowLog)
+                ++totalConsecutiveErrors;
+                if (totalConsecutiveErrors >= MaximumConsecutivePollErrors)
                 {
-                    Logger.LogInformation("All queues message count are zero and marked as completed. Processing is completed.");
+                    Logger.LogError(
+                        ex,
+                        "Stopping poll because number of consecutive errors ({TotalConsecutiveErrors}) has reached threshold {MaximumumConsecutivePollErrors}.",
+                        totalConsecutiveErrors, MaximumConsecutivePollErrors);
+                    throw;
                 }
-                foreach (var currentResult in results)
+                else
                 {
-                    Logger.LogDebug("Queue {QueueName} completed at {EndTime}", currentResult.CurrentQueueInfo.QueueName, currentResult.CompletedInfo?.PolledAt);
+                    Logger.LogWarning(
+                        ex, 
+                        "Tolerating error polling because number of consecutive errors ({TotalConsecutiveErrors}) is below threshold {MaximumumConsecutivePollErrors}", 
+                        totalConsecutiveErrors,
+                        MaximumConsecutivePollErrors);
+
                 }
-
-                var endTime = results.Where(result => result.CompletedInfo != null).Max(result => result.CompletedInfo.PolledAt);
-                var pollingHistoryWithActivity = AllQueueCheckers
-                    .Where(checker => checker.HistoricalQueueInfo.Select(info => info.Published).Distinct().Count() > 1);
-
-                var queuePollingHistory = pollingHistoryWithActivity
-                    .ToDictionary(checker => checker.QueueName, checker => new QueuePollingHistory(checker.QueueName,  checker.ShortQueueName, checker.HistoricalQueueInfo));
-
-                AddForceIncludeQueues(queuePollingHistory);
-                return new(startTime, endTime, queuePollingHistory);
             }
 
-            if (shouldShowLog)
-            {
-                Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Processing is NOT YET completed.");
-                lastShowProgressTime = utcNow;
-            }
             await Task.Delay(DelayBetweenQueuePolls).ConfigureAwait(false);
         }
     }
