@@ -106,7 +106,7 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
                     command.Parameters.Add(new SqlParameter()
                     {
                         ParameterName = "Name",
-                        Value = $"{currentEntityType}%",
+                        Value = $"{currentEntityType}#%",
                     });
                     var count = await command.ExecuteScalarAsync() as int?;
                     if (count == null)
