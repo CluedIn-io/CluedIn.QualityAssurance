@@ -174,7 +174,7 @@ internal class KubernetesEnvironment : IEnvironment
 
         runner.PortForwardAsync(
             Directory.GetCurrentDirectory(),
-            AppendNamespaceAndContext(arguments),
+            AppendEnvironmentDetails(arguments),
             taskCompletionSource,
             cancellationToken);
 
@@ -188,7 +188,7 @@ internal class KubernetesEnvironment : IEnvironment
         return result;
     }
 
-    private string[] AppendNamespaceAndContext(IEnumerable<string> arguments)
+    private string[] AppendEnvironmentDetails(IEnumerable<string> arguments)
     {
         if (!string.IsNullOrWhiteSpace(Options.Value.Namespace))
         {
@@ -197,6 +197,10 @@ internal class KubernetesEnvironment : IEnvironment
         if (!string.IsNullOrWhiteSpace(Options.Value.ContextName))
         {
             arguments = arguments.Append($"--context {Options.Value.ContextName}");
+        }
+        if (!string.IsNullOrWhiteSpace(Options.Value.KubeConfigPath))
+        {
+            arguments = arguments.Append($"--kubeconfig {Options.Value.KubeConfigPath}");
         }
 
         return arguments.ToArray();
@@ -214,7 +218,7 @@ internal class KubernetesEnvironment : IEnvironment
         };
         var result = await runner.RunAsync(
             Directory.GetCurrentDirectory(),
-            AppendNamespaceAndContext(arguments),
+            AppendEnvironmentDetails(arguments),
             cancellationToken).ConfigureAwait(false);
 
         var response = result.Output.DeserializeToAnonymousType(new

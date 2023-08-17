@@ -44,6 +44,8 @@ internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationO
     public string ContextName { get; set; }
 
     public string Namespace { get; set; }
+
+    public string KubeConfigPath { get; set; }
     #endregion
 
     #region RabbitMQ
