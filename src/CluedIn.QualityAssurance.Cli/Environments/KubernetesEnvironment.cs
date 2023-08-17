@@ -172,6 +172,11 @@ internal class KubernetesEnvironment : IEnvironment
                 $":{port}",
         };
 
+        if (!string.IsNullOrWhiteSpace(Options.Value.KubeConfigPath))
+        {
+            arguments = arguments.Concat(new string[] { "--kubeconfig", Options.Value.KubeConfigPath }).ToArray();
+        }
+
         runner.PortForwardAsync(
             Directory.GetCurrentDirectory(),
             AppendNamespaceAndContext(arguments),

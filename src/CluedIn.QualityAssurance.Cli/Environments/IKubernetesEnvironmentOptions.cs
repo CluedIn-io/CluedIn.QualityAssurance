@@ -14,6 +14,9 @@ internal interface IKubernetesEnvironmentOptions
     [Option("namespace", Default = "cluedin", SetName = nameof(IKubernetesEnvironmentOptions), Required = false, HelpText = "Kubernetes namespace name.")]
     string Namespace { get; set; }
 
+    [Option("kubeconfig-path", Default = "", Required = false, SetName = nameof(IKubernetesEnvironmentOptions), HelpText = "Kubernetes context name.")]
+    string KubeConfigPath { get; set; }
+
     [Option("kubernetes", SetName = nameof(IKubernetesEnvironmentOptions), HelpText = "Determines that this is a CluedIn in Kubernetes environment.")]
     public bool IsKubernetesEnvironment { get; set; }
 }
