@@ -2,6 +2,7 @@
 using System.Text.Json;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 
@@ -60,10 +61,13 @@ internal class CsvFileResultWriter : IResultWriter
             });
 
             var allKeys = records.SelectMany(record => record.Keys).ToHashSet();
-
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                ShouldQuote = args => true
+            };
             var outputFilePath = Path.Combine(outputDirectoryPath, "results.csv");
             using var writer = new StreamWriter(outputFilePath);
-            using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+            using var csv = new CsvWriter(writer, config);
 
             foreach (var currentHeader in allKeys)
             {
