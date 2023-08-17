@@ -42,10 +42,6 @@ internal class CsvFileResultWriter : IResultWriter
                     {
                         dictionary.Add(currentCustomColumn.Key, currentCustomColumn.Value);
                     }
-                    else
-                    {
-                        dictionary.Add(currentCustomColumn.Key, JsonSerializer.Serialize(currentCustomColumn.Value));
-                    }
                 }
 
                 foreach (var currentQueue in current.QueuePollingHistory)
@@ -61,13 +57,9 @@ internal class CsvFileResultWriter : IResultWriter
             });
 
             var allKeys = records.SelectMany(record => record.Keys).ToHashSet();
-            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                ShouldQuote = args => true
-            };
             var outputFilePath = Path.Combine(outputDirectoryPath, "results.csv");
             using var writer = new StreamWriter(outputFilePath);
-            using var csv = new CsvWriter(writer, config);
+            using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
 
             foreach (var currentHeader in allKeys)
             {
@@ -88,7 +80,7 @@ internal class CsvFileResultWriter : IResultWriter
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error trying to save json result");
+            Logger.LogError(ex, "Error trying to save csv result.");
         }
 
     }
