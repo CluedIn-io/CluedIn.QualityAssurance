@@ -13,7 +13,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 
 internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
 {
-    private const int TotalGetDataSetIdRetries = 3;
+    private const int TotalGetDataSetIdRetries = 10;
     private static readonly TimeSpan DelayBetweenGetDataSetIdRetries = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan DelayBetweenDataSetCommits = TimeSpan.FromSeconds(5);
 
