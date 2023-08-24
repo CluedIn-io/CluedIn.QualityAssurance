@@ -50,7 +50,15 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         ObservedQueueCheckers = new ();
         CriticalQueueCheckers = new ();
         ForceIncludeQueues = new ();
-        _ = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _ = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error trying to initialize completion checker. Attempting one more time.");
+            _ = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public async Task<RabbitMQCompletionResult> PollForCompletionAsync(CancellationToken cancellationToken)
@@ -70,7 +78,6 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 // TODO: Return partial history
                 return new(startTime, DateTimeOffset.UtcNow, new());
             }
-
 
             try
             {

@@ -9,4 +9,7 @@ internal interface IFileSourceOperationOptions : IClueSendingOperationOptions
 
     [Option("input-directory", Default = null, Required = false, HelpText = "The directory path for input files.")]
     string InputDirectoryPath { get; set; }
+
+    [Option("milliseconds-after-vocabulary-key-creation", Default = 300, Required = false, HelpText = "Delay after vocabulary key creation, in milliseconds.")]
+    int DelayAfterVocabularyKeyCreationInMilliseconds { get; set; }
 }
