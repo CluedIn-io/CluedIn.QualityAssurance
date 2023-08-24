@@ -21,7 +21,6 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
     private const int MaximumKeyPrefixLength = 50;
     private const int MaximumVocabularyCreationPoll = 10;
     private static readonly TimeSpan DelayAfterVocabularyCreationPoll = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan DelayAfterVocabularyKeyCreation = TimeSpan.FromMilliseconds(300);
     private static readonly Regex InvalidEntityTypeNameRegex = new Regex(@"[^a-zA-Z0-9]");
     private static readonly Regex InvalidVocabularyNameRegex = new Regex(@"[^a-zA-Z0-9\.]");
 
@@ -427,8 +426,8 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
             }
 
             Logger.LogInformation("Creating VocabularyKeyName {VocabularyKeyName} because it does not exist.", vocabularyKey.Name);
-            await Task.Delay(DelayAfterVocabularyKeyCreation);
             var keyId = await CreateVocabularyKeyAsync(vocabularyId, vocabularyKey, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromMilliseconds(Options.DelayAfterVocabularyKeyCreationInMilliseconds));
             mapping.KeysMapping.Add(vocabularyKey.Name, new CustomVocabularyKeyMappingEntry
             {
                 Name = vocabularyKey.Name,
