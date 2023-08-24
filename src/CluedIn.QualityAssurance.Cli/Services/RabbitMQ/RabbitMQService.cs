@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Environments;
+using System.Net.Sockets;
 
 namespace CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 
@@ -167,110 +168,119 @@ internal class RabbitMQService
         request.Headers.Add("Authorization", "Basic " + base64EncodedAuthenticationString);
 
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
-        var response = await client.SendAsync(request).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.DeserializeToAnonymousTypeAsync(new[]
+        try
         {
-            new
+            var response = await client.SendAsync(request).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.DeserializeToAnonymousTypeAsync(new[]
             {
-                name = string.Empty,
-                message_stats = new
+                new
                 {
-                    ack = (uint?)null,
-                    ack_details = new
+                    name = string.Empty,
+                    message_stats = new
                     {
-                        rate = (double?)null,
-                    },
-                    deliver_no_ack = (uint?)null,
-                    deliver_no_ack_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    get = (uint?)null,
-                    get_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    get_empty = (uint?)null,
-                    get_empty_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    get_no_ack = (uint?)null,
-                    get_no_ack_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    deliver = (uint?)null,
-                    deliver_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    deliver_get = (uint?)null,
-                    deliver_get_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    publish = (uint?)null,
-                    publish_details = new
-                    {
-                        rate = (double?)null,
-                    },
-                    redeliver = (uint?)null,
-                    redeliver_details = new
-                    {
-                        rate = (double?)null,
-                    },
+                        ack = (uint?)null,
+                        ack_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        deliver_no_ack = (uint?)null,
+                        deliver_no_ack_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        get = (uint?)null,
+                        get_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        get_empty = (uint?)null,
+                        get_empty_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        get_no_ack = (uint?)null,
+                        get_no_ack_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        deliver = (uint?)null,
+                        deliver_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        deliver_get = (uint?)null,
+                        deliver_get_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        publish = (uint?)null,
+                        publish_details = new
+                        {
+                            rate = (double?)null,
+                        },
+                        redeliver = (uint?)null,
+                        redeliver_details = new
+                        {
+                            rate = (double?)null,
+                        },
 
-                },
-                messages = (uint?)null,
-                messages_details = new
-                {
-                    rate = (double?)null,
-                },
-            }
-        }).ConfigureAwait(false);
+                    },
+                    messages = (uint?)null,
+                    messages_details = new
+                    {
+                        rate = (double?)null,
+                    },
+                }
+            }).ConfigureAwait(false);
 
-        return result.Select(current =>
+            return result.Select(current =>
+            {
+                // message_stats will be null when there is no activity
+                uint ackCount = current?.message_stats?.ack ?? 0;
+                double ackRate = current?.message_stats?.ack_details?.rate ?? 0.0f;
+                uint deliverCount = current?.message_stats?.deliver ?? 0;
+                double deliverRate = current?.message_stats?.deliver_details?.rate ?? 0.0f;
+                uint deliverGetCount = current?.message_stats?.deliver_get ?? 0;
+                double deliverGetRate = current?.message_stats?.deliver_get_details?.rate ?? 0.0f;
+                uint deliverNoAckCount = current?.message_stats?.deliver_no_ack ?? 0;
+                double deliverNoAckRate = current?.message_stats?.deliver_no_ack_details?.rate ?? 0.0f;
+
+                uint getCount = current?.message_stats?.get ?? 0;
+                double getRate = current?.message_stats?.get_details?.rate ?? 0.0f;
+                uint getEmptyCount = current?.message_stats?.get_empty ?? 0;
+                double getEmptyRate = current?.message_stats?.get_empty_details?.rate ?? 0.0f;
+                uint getNoAckCount = current?.message_stats?.get_no_ack ?? 0;
+                double getNoAckRate = current?.message_stats?.get_no_ack_details?.rate ?? 0.0f;
+
+                uint reDeliverGetCount = current?.message_stats?.redeliver ?? 0;
+                double reDeliverGetRate = current?.message_stats?.redeliver_details?.rate ?? 0.0f;
+                uint publishCount = current?.message_stats?.publish ?? 0;
+                double publishRate = current?.message_stats?.publish_details?.rate ?? 0.0f;
+                uint messageCount = current?.messages ?? 0;
+                double messageCountRate = current?.messages_details?.rate ?? 0.0f;
+                return new QueueInfo(
+                    QueueName: current.name,
+                    Acknowledged: new(ackCount, ackRate),
+                    Delivered: new(deliverCount, deliverRate),
+                    DeliveredOrGet: new(deliverGetCount, deliverGetRate),
+                    DeliveredNoAck: new(deliverNoAckCount, deliverNoAckRate),
+                    Get: new(getCount, getRate),
+                    GetEmpty: new(getEmptyCount, getEmptyRate),
+                    GetNoAck: new(getNoAckCount, getNoAckRate),
+                    Redelivered: new(reDeliverGetCount, reDeliverGetRate),
+                    Published: new(publishCount, publishRate),
+                    Messages: new(messageCount, messageCountRate),
+                    DateTimeOffset.UtcNow);
+            })
+            .ToList();
+        }
+        catch (HttpRequestException ex) when (ex.InnerException is SocketException)
         {
-            // message_stats will be null when there is no activity
-            uint ackCount = current?.message_stats?.ack ?? 0;
-            double ackRate = current?.message_stats?.ack_details?.rate ?? 0.0f;
-            uint deliverCount = current?.message_stats?.deliver ?? 0;
-            double deliverRate = current?.message_stats?.deliver_details?.rate ?? 0.0f;
-            uint deliverGetCount = current?.message_stats?.deliver_get ?? 0;
-            double deliverGetRate = current?.message_stats?.deliver_get_details?.rate ?? 0.0f;
-            uint deliverNoAckCount = current?.message_stats?.deliver_no_ack ?? 0;
-            double deliverNoAckRate = current?.message_stats?.deliver_no_ack_details?.rate ?? 0.0f;
-
-            uint getCount = current?.message_stats?.get ?? 0;
-            double getRate = current?.message_stats?.get_details?.rate ?? 0.0f;
-            uint getEmptyCount = current?.message_stats?.get_empty ?? 0;
-            double getEmptyRate = current?.message_stats?.get_empty_details?.rate ?? 0.0f;
-            uint getNoAckCount = current?.message_stats?.get_no_ack ?? 0;
-            double getNoAckRate = current?.message_stats?.get_no_ack_details?.rate ?? 0.0f;
-
-            uint reDeliverGetCount = current?.message_stats?.redeliver ?? 0;
-            double reDeliverGetRate = current?.message_stats?.redeliver_details?.rate ?? 0.0f;
-            uint publishCount = current?.message_stats?.publish ?? 0;
-            double publishRate = current?.message_stats?.publish_details?.rate ?? 0.0f;
-            uint messageCount = current?.messages ?? 0;
-            double messageCountRate = current?.messages_details?.rate ?? 0.0f;
-            return new QueueInfo(
-                QueueName: current.name,
-                Acknowledged: new(ackCount, ackRate),
-                Delivered: new(deliverCount, deliverRate),
-                DeliveredOrGet: new(deliverGetCount, deliverGetRate),
-                DeliveredNoAck: new(deliverNoAckCount, deliverNoAckRate),
-                Get: new(getCount, getRate),
-                GetEmpty: new(getEmptyCount, getEmptyRate),
-                GetNoAck: new(getNoAckCount, getNoAckRate),
-                Redelivered: new(reDeliverGetCount, reDeliverGetRate),
-                Published: new(publishCount, publishRate),
-                Messages: new(messageCount, messageCountRate),
-                DateTimeOffset.UtcNow);
-        })
-        .ToList();
+            Logger.LogWarning(ex, "Setting up environment again in attempt to rectify network issues.");
+            await Environment.SetupAsync(cancellationToken).ConfigureAwait(false);
+            throw;
+        }
     }
 }
