@@ -599,10 +599,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
             })
             .ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
 
-        var vocabularyId = result.data?.management?.createVocabulary?.vocabularyId ?? throw new InvalidOperationException("VocabularyId is not found in result.");
-
-        _ = await PollForVocabularyCreationCompletionAsync(vocabularyName, cancellationToken).ConfigureAwait(false);
-        return vocabularyId;
+        return await PollForVocabularyCreationCompletionAsync(vocabularyName, cancellationToken).ConfigureAwait(false);
     }
 
     protected async Task<List<(Guid KeyId, string Name)>> GetVocabularyKeysFromVocabularyIdAsync(Guid vocabularyId, CancellationToken cancellationToken)
