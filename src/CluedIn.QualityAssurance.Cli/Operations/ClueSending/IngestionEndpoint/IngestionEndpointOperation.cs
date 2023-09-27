@@ -155,7 +155,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(batch), Encoding.UTF8, "application/json"),
+                    Content = new StringContent(JsonSerializer.Serialize(batch), Encoding.UTF8, ApplicationJsonContentType),
                 };
                 var response = await SendRequestAsync(requestMessage, cancellationToken, true, supressDebug: true).ConfigureAwait(false);
                 var result = await response.Content
@@ -209,7 +209,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -246,7 +246,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -294,7 +294,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
     }

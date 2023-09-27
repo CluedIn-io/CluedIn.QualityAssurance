@@ -18,6 +18,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation<TOptions>
     where TOptions : IClueSendingOperationOptions, IFileSourceOperationOptions
 {
+    protected const string ApplicationJsonContentType = "application/json";
     private const int MaximumKeyPrefixLength = 50;
     private const int MaximumVocabularyCreationPoll = 10;
     private static readonly TimeSpan DelayAfterVocabularyCreationPoll = TimeSpan.FromSeconds(1);
@@ -283,7 +284,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
         await CheckResponse(response).ConfigureAwait(false);
@@ -317,7 +318,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -360,7 +361,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -535,7 +536,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -578,7 +579,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -615,7 +616,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -662,7 +663,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -697,7 +698,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -818,7 +819,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
@@ -838,7 +839,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
@@ -859,7 +860,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
@@ -924,7 +925,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
     }

@@ -87,7 +87,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
@@ -205,7 +205,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
         return extension switch
         {
             ".csv" => "text/csv",
-            ".json" => "application/json",
+            ".json" => ApplicationJsonContentType,
             ".xls" => "application/vnd.ms-excel",
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             _ => throw new NotSupportedException($"File extension '{extension}' is not supported.")
@@ -284,7 +284,7 @@ internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
