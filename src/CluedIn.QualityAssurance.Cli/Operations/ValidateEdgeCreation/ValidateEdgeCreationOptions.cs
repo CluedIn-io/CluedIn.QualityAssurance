@@ -6,7 +6,7 @@ using CommandLine;
 namespace CluedIn.QualityAssurance.Cli.Operations.ValidateEdgeCreation;
 
 [Verb("validate-edge-creation", HelpText = "Validate edge creation by repeated importing of clues against multiple organizations")]
-internal class ValidateEdgeCreationOptions : ClueSendingOperationOptionsBase, IRawCluesOptions
+internal class ValidateEdgeCreationOptions : ClueSendingOperationOptions, IRawCluesOptions
 {
     [Option("clues-directory", Required = true)]
     [DirectoryExists]

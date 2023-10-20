@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.IngestionEndpoint;
 
-internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEndpointOptions>
+internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpointOptions>
 {
     public IngestionEndpointOperation(
         ILogger<IngestionEndpointOperation> logger,

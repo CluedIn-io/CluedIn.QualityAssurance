@@ -11,7 +11,7 @@ using SystemEnvironment = System.Environment;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 
-internal class FileUploadOperation : FileSourceOperationBase<FileUploadOptions>
+internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
 {
     private const int TotalGetDataSetIdRetries = 10;
     private static readonly TimeSpan DelayBetweenGetDataSetIdRetries = TimeSpan.FromSeconds(30);

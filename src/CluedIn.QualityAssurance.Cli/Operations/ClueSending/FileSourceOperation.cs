@@ -11,11 +11,10 @@ using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.Text.RegularExpressions;
 using CluedIn.Core;
-using CluedIn.Core.Data.Vocabularies;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
-internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation<TOptions>
+internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOptions>
     where TOptions : IClueSendingOperationOptions, IFileSourceOperationOptions
 {
     protected const string ApplicationJsonContentType = "application/json";
@@ -25,8 +24,8 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
     private static readonly Regex InvalidEntityTypeNameRegex = new Regex(@"[^a-zA-Z0-9]");
     private static readonly Regex InvalidVocabularyNameRegex = new Regex(@"[^a-zA-Z0-9\.]");
 
-    public FileSourceOperationBase(
-        ILogger<FileSourceOperationBase<TOptions>> logger,
+    public FileSourceOperation(
+        ILogger<FileSourceOperation<TOptions>> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMqCompletionChecker,
@@ -41,7 +40,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
     protected string EntityTypePrefix { get; set; }
 
-    private ILogger<FileSourceOperationBase<TOptions>> Logger { get; }
+    private ILogger<FileSourceOperation<TOptions>> Logger { get; }
 
     protected override async Task CreateOperationData(int iterationNumber)
     {
@@ -207,7 +206,7 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
         }
     }
 
-    private void AddMappingCreationOperation(List<SetupOperation> operations, FileSource fileSource, FileSourceOperationBase<TOptions>.CustomMappingOptions customMapping)
+    private void AddMappingCreationOperation(List<SetupOperation> operations, FileSource fileSource, FileSourceOperation<TOptions>.CustomMappingOptions customMapping)
     {
         operations.Add(CreateSetupOperation(fileSource, CreateEntityTypeIfNotExistsAsync));
         operations.Add(CreateSetupOperation(fileSource, CreateVocabularyIfNotExistsAsync));
@@ -938,13 +937,13 @@ internal abstract class FileSourceOperationBase<TOptions> : ClueSendingOperation
 
     public class CustomMappingOptions
     {
-
         public bool ShouldAutoGenerateOriginEntityCodeKey { get; set; } = true;
+        
         public bool ShouldAutoMap { get; set; } = true;
-        public string? EntityType { get; set; }
-        public string? VocabularyName { get; set; }
 
-        //public IEnumerable<CustomVocabulary> Vocabularies { get; set; } = Enumerable.Empty<CustomVocabulary>();
+        public string? EntityType { get; set; }
+
+        public string? VocabularyName { get; set; }
 
         public IEnumerable<CustomMappingRequest> MappingRequests { get; set; } = Enumerable.Empty<CustomMappingRequest>();
     }
