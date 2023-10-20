@@ -13,15 +13,6 @@
 	  <EmbeddedResource Include="Operations\ClueSending\Data\TestData\**" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\CreateEntityTypeAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\CreateManualAnnotationAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\CreateVocabularyAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\CreateVocabularyKeyAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\GetAllVocabulariesAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\GetEntityTypeInfoAsync.json" />
-	  <None Remove="Operations\ClueSending\Data\RequestTemplates\GetVocabularyKeysFromVocabularyIdAsync.json" />
-	</ItemGroup>
-	<ItemGroup>
 		<PackageReference Include="CluedIn.Core" Version="3.5.2" />
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
 		<PackageReference Include="CsvHelper" Version="30.0.1" />
