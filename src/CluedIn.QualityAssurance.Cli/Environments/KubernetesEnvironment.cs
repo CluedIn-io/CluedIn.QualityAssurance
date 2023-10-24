@@ -24,13 +24,6 @@ internal class KubernetesEnvironment : IEnvironment
 
     private Dictionary<string, ConnectionInfo> Connections { get; set; } = new Dictionary<string, ConnectionInfo>();
 
-    private class ConnectionInfo
-    {
-        public Process Process { get; set; }
-        public object Info { get; set; }
-    }
-    private record ServiceSettings (string UserName, string ServiceName, string SecretName, string PasswordField, int Port);
-
     public KubernetesEnvironment(ILogger<KubernetesEnvironment> logger, IOptions<IKubernetesEnvironmentOptions> options)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -61,10 +54,10 @@ internal class KubernetesEnvironment : IEnvironment
 
         var connectionInfo = createConnectionInfoFunc(settings.UserName, password, result);
         Connections.Add(name, new ConnectionInfo
-        {
-            Info= connectionInfo,
-            Process = result.Process,
-        });
+        (
+            Process: result.Process,
+            Info: connectionInfo
+        ));
         return connectionInfo;
     }
 
@@ -84,7 +77,7 @@ internal class KubernetesEnvironment : IEnvironment
         throw new InvalidOperationException($"Retrieved null connectionInfo '{name}'.");
     }
 
-    private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, out ServiceSettings settings)
+    private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, [NotNullWhen(true)] out ServiceSettings? settings)
         where T : class
     {
         if (!Settings.TryGetValue(name, out settings))
@@ -300,4 +293,8 @@ internal class KubernetesEnvironment : IEnvironment
     {
         return GetConnectionInfoAsync<ElasticSearchConnectionInfo>(nameof(ElasticSearchConnectionInfo), cancellationToken);
     }
+
+    private record ConnectionInfo(Process Process, object Info);
+
+    private record ServiceSettings(string UserName, string ServiceName, string SecretName, string PasswordField, int Port);
 }
