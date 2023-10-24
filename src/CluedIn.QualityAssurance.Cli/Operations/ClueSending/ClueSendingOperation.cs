@@ -68,13 +68,13 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         {
             try
             {
-                Logger.LogDebug($"Begin writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogDebug("Begin writing result using. '{ResultWriter}'.", currentWriter.GetType().FullName);
                 await currentWriter.ProcessAsync(Options.OutputDirectory, results, cancellationToken).ConfigureAwait(false);
-                Logger.LogDebug($"End writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogDebug("End writing result using. '{ResultWriter}'.", currentWriter.GetType().FullName);
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, $"Error when writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogWarning(ex, "Error when writing result using '{ResultWriter}'.", currentWriter.GetType().FullName);
             }
         }
     }
@@ -147,7 +147,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         await CompletionChecker.InitializeAsync(cancellationToken).ConfigureAwait(false);
         result.StartTime = DateTimeOffset.UtcNow;
-        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes));
+        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes), cancellationToken);
         var completionCheckerTask = CompletionChecker.PollForCompletionAsync(cancellationToken);
         var testRunTask = Task.WhenAll(ExecuteIngestionAsync(cancellationToken), completionCheckerTask);
 
@@ -203,7 +203,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     {
         foreach (var operation in operations)
         {
-            using var scope = operation.LoggingScopeState != null ? this.Logger.BeginScope(operation.LoggingScopeState) : null;
+            using var scope = operation.LoggingScopeState != null ? Logger.BeginScope(operation.LoggingScopeState) : null;
             var operationName = operation.Name ?? operation.Function.Method.Name;
             Logger.LogInformation("Begin operation {OperationName}.", operationName);
             await Task.Delay(DelayBeforeOperation, cancellationToken).ConfigureAwait(false);

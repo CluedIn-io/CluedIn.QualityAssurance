@@ -103,7 +103,7 @@ internal class KubernetesEnvironment : IEnvironment
         Logger.LogInformation("Setting up kubernetes environment for testing.");
         Connections.Clear();
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(RabbitMQConnectionInfo),
             (userName, password, portForwardResult) => new RabbitMQConnectionInfo
             {
@@ -113,7 +113,7 @@ internal class KubernetesEnvironment : IEnvironment
             },
             cancellationToken);
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(Neo4jConnectionInfo),
             (userName, password, portForwardResult) => new Neo4jConnectionInfo
             (
@@ -123,7 +123,7 @@ internal class KubernetesEnvironment : IEnvironment
             ),
             cancellationToken);
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(ElasticSearchConnectionInfo),
             (userName, password, portForwardResult) => new ElasticSearchConnectionInfo
             (
@@ -134,7 +134,7 @@ internal class KubernetesEnvironment : IEnvironment
             cancellationToken);
 
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(SqlServerConnectionInfo),
             (userName, password, portForwardResult) => {
                 var temp = new Uri($"tcp://{portForwardResult.Uri}");
@@ -148,7 +148,7 @@ internal class KubernetesEnvironment : IEnvironment
             },
             cancellationToken);
 
-        NewAccountAccessKey = await this.GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
+        NewAccountAccessKey = await GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
         SetupTime = DateTimeOffset.UtcNow;
     }
 

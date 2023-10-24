@@ -12,6 +12,7 @@ using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.Text.RegularExpressions;
 using CluedIn.Core;
 using CluedIn.Core.Data.Vocabularies;
+using JsonCons.JsonPath;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -28,6 +29,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
     private static readonly Regex EntityTypeRegex = new(@"{{EntityType\[([a-zA-Z0-9]+)\]}}");
     private static readonly Regex VocabularyRegex = new(@"{{Vocabulary\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
     private static readonly Regex VocabularyKeyRegex = new(@"{{VocabularyKey\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
+    private static readonly Regex EnvironmentVariableRegex = new(@"{{Env\[([a-zA-Z0-9_]+)\]}}");
+    private static readonly Regex RuntimeVariableRegex = new(@"{{Var\[([a-zA-Z0-9_]+)\]}}");
 
     public FileSourceOperation(
         ILogger<FileSourceOperation<TOptions>> logger,
@@ -76,6 +79,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 ?.Select((request, index) => {
                     var name = request?["name"]?.Deserialize<string>();
                     var requestBody = request?["request"]?.ToString();
+                    var outputVariablesNode = request?["output"];
 
                     if (name == null)
                     {
@@ -86,7 +90,9 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                     {
                         throw new InvalidOperationException($"Invalid custom request. Body for request is null for request {index}.");
                     }
-                    return new CustomMappingRequest(name, requestBody);
+
+                    var outputVariables = outputVariablesNode?.Deserialize<List<RequestOutputVariable>>() ?? new List<RequestOutputVariable>();
+                    return new CustomMappingRequest(name, requestBody, outputVariables);
                 })
                 .ToList() ?? new List<CustomMappingRequest>();
             if (customMapping != null)
@@ -156,6 +162,12 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 .Select(match => match.Groups[1].Value)
                 .Distinct()
                 .ToList();
+            var foundEnvironmentVariables = EnvironmentVariableRegex.Matches(customizationFileBody)
+                .Select(match => match.Groups[1].Value)
+                .Distinct()
+                .ToList();
+
+            fileSource.EnvironmentVariables = foundEnvironmentVariables;
 
             // Should probably be a dictionary
             var vocabulariesToCreate = foundVocabularies.Select(vocabulary => new CustomVocabulary(vocabulary)).ToList();
@@ -195,12 +207,13 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
         }
 
+        var runtimeVariables = new Dictionary<string, string>();
         Logger.LogInformation("Using custom mapping {CustomMapping}.", customMapping.MappingRequests.Select(x => x.Name));
         foreach (var current in customMapping.MappingRequests)
         {
             var loggingScopeState = CreateLoggingScopeState(fileSource);
             loggingScopeState.Add("MappingRequestName", current.Name);
-            operations.Add(CreateSetupOperation(fileSource, current, SendCustomMappingRequestAsync, loggingScopeState));
+            operations.Add(CreateSetupOperation(fileSource, current, runtimeVariables, SendCustomMappingRequestAsync, loggingScopeState));
         }
     }
 
@@ -221,7 +234,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     private IDisposable? CreateLoggingScope(FileSource fileSource)
     {
-        return this.Logger.BeginScope(CreateLoggingScopeState(fileSource));
+        return Logger.BeginScope(CreateLoggingScopeState(fileSource));
     }
 
     protected SetupOperation CreateSetupOperation(FileSource fileSource, Func<FileSource, CancellationToken, Task> func)
@@ -243,9 +256,10 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         return Task.CompletedTask;
     }
 
-    protected async Task SendCustomMappingRequestAsync(
+    private async Task SendCustomMappingRequestAsync(
         FileSource fileSource,
         CustomMappingRequest mappingRequest,
+        Dictionary<string, string> runtimeVariables,
         CancellationToken cancellationToken)
     {
         Logger.LogDebug("Begin sending custom mapping request '{CustomMappingRequestName}'", mappingRequest.Name);
@@ -253,14 +267,43 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var requestUri = serverUris.UiGraphqlUri;
 
         var body = mappingRequest.Request;
-        string replacedBody = ReplaceParameters(fileSource, body);
+        var replacedBody = ReplaceParameters(fileSource, body);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
             Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        await CheckResponse(response).ConfigureAwait(false);
+        var json = await CheckResponse(response).ConfigureAwait(false);
+
+        if (mappingRequest.OutputVariables.Any())
+        {
+            using var doc = JsonDocument.Parse(json);
+            foreach (var outputVariable in mappingRequest.OutputVariables)
+            {
+                var path = outputVariable.Path;
+                var results = JsonSelector.Select(doc.RootElement, path);
+                if (outputVariable.IsArray)
+                {
+                    throw new NotSupportedException("Output Variable as an array is not supported.");
+                }
+                else
+                {
+                    if (results.Count != 1)
+                    {
+                        throw new InvalidOperationException($"Output variable {outputVariable.Name} count is not expected. Count is {results.Count}.");
+                    }
+                    var value = results.Select(elem => elem.GetString()).Single();
+
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        throw new InvalidOperationException($"Output variable {outputVariable.Name} value '{value}' is null or whitespace.");
+                    }
+                    runtimeVariables.Add(outputVariable.Name, value);
+                }
+            }
+
+        }
 
         Logger.LogDebug("End sending custom mapping request '{CustomMappingRequestName}'", mappingRequest.Name);
     }
@@ -431,7 +474,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
 
             Logger.LogInformation("Creating VocabularyKeyName {VocabularyKeyName} because it does not exist.", vocabularyKey.Name);
-            await Task.Delay(TimeSpan.FromMilliseconds(Options.DelayAfterVocabularyKeyCreationInMilliseconds));
+            await Task.Delay(TimeSpan.FromMilliseconds(Options.DelayAfterVocabularyKeyCreationInMilliseconds), cancellationToken);
 
             var keyId = Guid.Empty;
             try
@@ -441,8 +484,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             catch (InvalidOperationException ex)
             {
                 Logger.LogWarning(ex, "An error occured while trying to create vocabulary. However, it might be already created. Polling to check.");
-                var result = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, vocabularyKey.Name, cancellationToken).ConfigureAwait(false);
-                keyId = result.VocabularyKeyId;
+                var (vocabularyKeyId, _) = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, vocabularyKey.Name, cancellationToken).ConfigureAwait(false);
+                keyId = vocabularyKeyId;
             }
             mapping.KeysMapping.Add(vocabularyKey.Name, new CustomVocabularyKeyMappingEntry
             {
@@ -459,12 +502,12 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         // Sometimes it says vocabulary does not exist, when it does,
         // We need to ensure that it exists first before processing
 
-        for (int i = 0; i < MaximumVocabularyCreationPoll; ++i)
+        for (var i = 0; i < MaximumVocabularyCreationPoll; ++i)
         {
             Logger.LogInformation("Waiting for {DelayAfterVocabularyCreation} before checking whether vocabulary key {VocabularyKeyName} exists.",
                 DelayAfterVocabularyCreationPoll,
                 keyName);
-            await Task.Delay(DelayAfterVocabularyCreationPoll).ConfigureAwait(false);
+            await Task.Delay(DelayAfterVocabularyCreationPoll, cancellationToken).ConfigureAwait(false);
             try
             {
                 var keys = await GetVocabularyKeysFromVocabularyIdAsync(vocabularyId, cancellationToken).ConfigureAwait(false);
@@ -478,7 +521,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
             catch (Exception ex)
             {
-                this.Logger.LogWarning(ex, "Failed to poll for {VocabularyKeyName}.", keyName);
+                Logger.LogWarning(ex, "Failed to poll for {VocabularyKeyName}.", keyName);
             }
         }
 
@@ -845,7 +888,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        await CheckResponse(response).ConfigureAwait(false); 
+        _ = await CheckResponse(response).ConfigureAwait(false); 
         _ = await PollForVocabularyCreationCompletionAsync(fileSource.VocabularyName, cancellationToken).ConfigureAwait(false);
     }
 
@@ -866,7 +909,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        await CheckResponse(response).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
     }
 
     protected async Task AddEntityCodeAsync(FileSource fileSource, CancellationToken cancellationToken)
@@ -886,18 +929,20 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         };
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        await CheckResponse(response).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
     }
 
-    private static async Task CheckResponse(HttpResponseMessage response)
+    private static async Task<string> CheckResponse(HttpResponseMessage response)
     {
-        var result = await response.Content
-                    .DeserializeToAnonymousTypeAsync(new
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var result = json
+                    .DeserializeToAnonymousType(new
                     {
                         errors = (GraphQLError[]?)null,
-                    }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+                    }) ?? throw new InvalidOperationException("Invalid result because it is empty.");
 
         CheckForErrors(result.errors);
+        return json;
     }
 
     private static void CheckForErrors(GraphQLError[]? errors)
@@ -976,7 +1021,9 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     protected record KeyMapping(string Field, string Key, bool UseAsEntityCode, bool UseAsAlias);
 
-    protected record CustomMappingRequest(string Name, string Request);
+    protected record CustomMappingRequest(string Name, string Request, List<RequestOutputVariable> OutputVariables);
+
+    protected record RequestOutputVariable(string Name, string Path, bool IsArray = false);
 
     protected record CustomVocabulary(string Name)
     {
