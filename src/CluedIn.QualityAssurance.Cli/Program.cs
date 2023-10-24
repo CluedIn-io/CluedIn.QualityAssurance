@@ -102,8 +102,12 @@ internal class Program
 
                 var operation = host.Services.GetRequiredService(operationType);
 
-                var executeAsyncMethod = operationType.GetMethod("ExecuteAsync");
-                var executeTask = (Task)executeAsyncMethod.Invoke(operation, new[] { options, lifetime.ApplicationStopping });
+                var executeAsyncMethod = operationType.GetMethod(nameof(Operation<IOperationOptions>.ExecuteAsync));
+                var executeTask = executeAsyncMethod?.Invoke(operation, new[] { options, lifetime.ApplicationStopping }) as Task;
+                if (executeTask is null)
+                {
+                    throw new InvalidOperationException($"Unable to find method '{nameof(Operation<IOperationOptions>.ExecuteAsync)}'.");
+                }
                 await executeTask.ConfigureAwait(false);
 
                 exitCode = 0;
@@ -242,7 +246,7 @@ internal class Program
     /// </summary>
     class RemovePropertiesEnricher : ILogEventEnricher
     {
-        public void Enrich(LogEvent le, ILogEventPropertyFactory lepf)
+        public void Enrich(LogEvent le, ILogEventPropertyFactory logEventPropertyFactory)
         {
             le.RemovePropertyIfPresent("SourceContext");
         }
