@@ -125,21 +125,21 @@ internal class KubernetesEnvironment : IEnvironment
         _ = await this.GetOrCreateConnectionInfoAsync(
             nameof(Neo4jConnectionInfo),
             (userName, password, portForwardResult) => new Neo4jConnectionInfo
-            {
-                BoltUri = new Uri($"bolt://{portForwardResult.Uri}"),
-                Password = password,
-                UserName = userName,
-            },
+            (
+                BoltUri: new Uri($"bolt://{portForwardResult.Uri}"),
+                UserName: userName,
+                Password: password
+            ),
             cancellationToken);
 
         _ = await this.GetOrCreateConnectionInfoAsync(
             nameof(ElasticSearchConnectionInfo),
             (userName, password, portForwardResult) => new ElasticSearchConnectionInfo
-            {
-                ServerUri = new Uri($"http://{portForwardResult.Uri}"),
-                Password = password,
-                UserName = userName,
-            },
+            (
+                ServerUri: new Uri($"http://{portForwardResult.Uri}"),
+                UserName: userName,
+                Password: password
+            ),
             cancellationToken);
 
 
@@ -148,12 +148,12 @@ internal class KubernetesEnvironment : IEnvironment
             (userName, password, portForwardResult) => {
                 var temp = new Uri($"tcp://{portForwardResult.Uri}");
                 return new SqlServerConnectionInfo
-                {
-                    Host = temp.Host,
-                    Port = temp.Port,
-                    Password = password,
-                    UserName = userName,
-                };
+                (
+                    Host: temp.Host,
+                    Port: temp.Port,
+                    UserName: userName,
+                    Password: password
+                );
             },
             cancellationToken);
 
