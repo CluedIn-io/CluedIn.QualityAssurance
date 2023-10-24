@@ -30,10 +30,10 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         ILogger<FileSourceOperation<TOptions>> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMqCompletionChecker, postOperationActions, httpClientFactory)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

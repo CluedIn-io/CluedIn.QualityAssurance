@@ -55,7 +55,7 @@ internal class LocalEnvironment : IEnvironment
         return Task.FromResult(availableMemory);
     }
 
-    public Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
+    public Task<RabbitMQConnectionInfo> GetRabbitMQConnectionInfoAsync(CancellationToken cancellationToken)
     {
         var result = new RabbitMQConnectionInfo
         {

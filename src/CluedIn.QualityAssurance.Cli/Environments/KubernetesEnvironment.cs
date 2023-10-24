@@ -274,7 +274,7 @@ internal class KubernetesEnvironment : IEnvironment
         return uri;
     }
 
-    public Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
+    public Task<RabbitMQConnectionInfo> GetRabbitMQConnectionInfoAsync(CancellationToken cancellationToken)
     {
         return GetConnectionInfoAsync<RabbitMQConnectionInfo>(nameof(RabbitMQConnectionInfo), cancellationToken);
     }

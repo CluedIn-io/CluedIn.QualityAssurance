@@ -18,7 +18,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         ILogger<ClueSendingOperation<TOptions>> logger,
         IEnvironment environment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
         : base(logger)
@@ -26,13 +26,14 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         Environment = environment ?? throw new ArgumentNullException(nameof(environment));
         ResultWriters = resultWriters ?? throw new ArgumentNullException(nameof(resultWriters));
-        CompletionChecker = rabbitMqCompletionChecker ?? throw new ArgumentNullException(nameof(rabbitMqCompletionChecker));
+        CompletionChecker = rabbitMQCompletionChecker ?? throw new ArgumentNullException(nameof(rabbitMQCompletionChecker));
         PostOperationActions = postOperationActions ?? throw new ArgumentNullException(nameof(postOperationActions));
         HttpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     }
     private ILogger<ClueSendingOperation<TOptions>> Logger { get; }
 
     protected Organization? Organization { get; set; }
+
     protected IEnvironment Environment { get; }
 
     private IEnumerable<IResultWriter> ResultWriters { get; }

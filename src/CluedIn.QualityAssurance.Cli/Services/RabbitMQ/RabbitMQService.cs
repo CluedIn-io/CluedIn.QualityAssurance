@@ -22,7 +22,7 @@ internal class RabbitMQService
 
     private Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
     {
-        return Environment.GetRabbitMqConnectionInfoAsync(cancellationToken);
+        return Environment.GetRabbitMQConnectionInfoAsync(cancellationToken);
     }
 
     public async Task PurgeQueueAsync(string queueName, CancellationToken cancellationToken)
