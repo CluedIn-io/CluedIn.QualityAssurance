@@ -132,7 +132,7 @@ RETURN n.Organization AS OrganizationId LIMIT 1";
     {
         using var writer = new StreamWriter(outputCsvFileName);
         using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-        csv.WriteRecords(edges);
+        await csv.WriteRecordsAsync(edges);
     }
 
     private async Task<string> CalculateFileHash(string fileName)
