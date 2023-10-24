@@ -71,8 +71,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             var requests = customMapping?["requests"]
                 ?.AsArray()
                 ?.Select((request, index) => {
-                    var name = request["name"]?.Deserialize<string>();
-                    var requestBody = request["request"]?.ToString();
+                    var name = request?["name"]?.Deserialize<string>();
+                    var requestBody = request?["request"]?.ToString();
 
                     if (name == null)
                     {
