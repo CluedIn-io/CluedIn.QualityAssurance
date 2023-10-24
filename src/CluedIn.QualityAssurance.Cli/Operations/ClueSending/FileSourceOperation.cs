@@ -52,8 +52,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     private async Task<(CustomMappingOptions MappingOptions, string json)> GetTestResultCustomizationsAsync(FileSource fileSource)
     {
-        var customizationFileStream = TestFileHelper.GetCustomizationFileStream(fileSource.UploadFilePath);
-        if (customizationFileStream != null)
+        if (TestFileHelper.TryGetCustomizationFileStream(fileSource.UploadFilePath, out var customizationFileStream))
         {
             using var reader = new StreamReader(customizationFileStream);
             var json = await reader.ReadToEndAsync();

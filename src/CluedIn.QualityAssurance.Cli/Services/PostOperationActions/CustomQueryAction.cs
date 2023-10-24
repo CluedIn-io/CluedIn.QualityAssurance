@@ -72,8 +72,7 @@ internal class CustomQueryAction : IPostOperationAction
 
     private async Task<CustomOutputOptions> GetTestResultCustomizationsAsync(string testFilePath)
     {
-        var customizationFileStream = TestFileHelper.GetCustomizationFileStream(testFilePath);
-        if (customizationFileStream != null)
+        if (TestFileHelper.TryGetCustomizationFileStream(testFilePath, out var customizationFileStream))
         {
             using var reader = new StreamReader(customizationFileStream);
             var json = await reader.ReadToEndAsync();
