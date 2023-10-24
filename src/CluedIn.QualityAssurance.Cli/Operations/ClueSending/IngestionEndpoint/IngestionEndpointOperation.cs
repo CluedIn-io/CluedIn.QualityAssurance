@@ -73,7 +73,7 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
         var fileName = Path.GetFileName(fileSource.UploadFilePath);
         Logger.LogInformation("Begin streaming {FileName} to ingestion endpoint.", fileName);
 
-        int BatchSize = Options.IngestionBatchSize;
+        var batchSize = Options.IngestionBatchSize;
         var fileStream = GetUploadFileStream(fileSource);
         using var streamReader = new StreamReader(fileStream);
         using var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -82,7 +82,7 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
         });
         csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
 
-        var batch = new List<Dictionary<string, string>>(BatchSize);
+        var batch = new List<Dictionary<string, string>>(batchSize);
         var totalSent = 0;
         try
         {
@@ -94,12 +94,12 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
                     return;
                 }
                 batch.Add(currentRecord.Columns);
-                if (batch.Count == BatchSize)
+                if (batch.Count == batchSize)
                 {
                     var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
                     if (success)
                     {
-                        totalSent += BatchSize;
+                        totalSent += batchSize;
                         Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
                     }
                     else
