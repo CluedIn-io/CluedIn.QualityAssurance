@@ -431,6 +431,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
             catch (InvalidOperationException ex)
             {
+                Logger.LogWarning(ex, "An error occured while trying to create vocabulary. However, it might be already created. Polling to check.");
                 var result = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, vocabularyKey.Name, cancellationToken).ConfigureAwait(false);
                 keyId = result.VocabularyKeyId;
             }
