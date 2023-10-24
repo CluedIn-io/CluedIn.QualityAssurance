@@ -157,7 +157,7 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
                 {
                     Content = new StringContent(JsonSerializer.Serialize(batch), Encoding.UTF8, ApplicationJsonContentType),
                 };
-                var response = await SendRequestAsync(requestMessage, cancellationToken, true, supressDebug: true).ConfigureAwait(false);
+                var response = await SendRequestAsync(requestMessage, cancellationToken, requireAuthorization: true, suppressDebug: true).ConfigureAwait(false);
                 var result = await response.Content
                     .DeserializeToAnonymousTypeAsync(new
                     {
@@ -192,10 +192,16 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
         using (var csv = new CsvReader(streamReader, CultureInfo.InvariantCulture))
         {
             csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
-            var records = csv.GetRecords<CsvRow>();
-
-            return records.Take(1).Select(row => row.Columns).ToList();
+            await foreach (var record in csv.GetRecordsAsync<CsvRow>())
+            {
+                return new List<Dictionary<string, string>>
+                {
+                    record.Columns,
+                };
+            }
         }
+
+        return new List<Dictionary<string, string>>();
     }
 
     private async Task CreateDataSourceAsync(FileSource fileSource, CancellationToken cancellationToken)
@@ -275,7 +281,12 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
             throw new InvalidOperationException("DataSourceSet is not found in result.");
         }
 
-        fileSource.DataSetId = dataSetsArray[0].id.Value;
+        if (dataSetsArray[0].id.GetValueOrDefault() == Guid.Empty)
+        {
+            throw new InvalidOperationException("DataSourceSet is empty guid.");
+        }
+
+        fileSource.DataSetId = dataSetsArray[0].id.GetValueOrDefault();
     }
 
     private async Task SendSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)

@@ -57,7 +57,8 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
         var labelsResultQuery = labelsQuery.Return<string?>("label");
 
         var labels = (await labelsResultQuery.ResultsAsync).ToList();
-        var entityTypeLabelsOfInterest = labels.Where(currentLabel => currentLabel.StartsWith("/") && !currentLabel.StartsWith("/Temporal"));
+        var entityTypeLabelsOfInterest = labels
+            .Where(currentLabel => currentLabel != null && currentLabel.StartsWith("/") && !currentLabel.StartsWith("/Temporal"));
 
         foreach (var currentLabel in entityTypeLabelsOfInterest)
         {
@@ -69,7 +70,7 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
 
             if (firstEntityResult != null)
             {
-                entityTypes.Add(currentLabel);
+                entityTypes.Add(currentLabel!);
             }
         }
 
@@ -90,7 +91,6 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
         using (var connection = new SqlConnection(builder.ConnectionString))
         {
             await connection.OpenAsync();
-            var grandTotal = 0;
             foreach (var currentEntityType in entityTypes)
             {
                 var sql = "SELECT COUNT(*) FROM Blobs WHERE OrganizationId = @OrganizationId AND [Name] LIKE @Name";
@@ -135,7 +135,7 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
             var totalResultQuery = totalQuery.Return<long?>("count(n)");
             var total = (await totalResultQuery.ResultsAsync).SingleOrDefault();
 
-            result.Add(currentEntityType, new(nonShadow.Value, total.Value));
+            result.Add(currentEntityType, new(nonShadow.GetValueOrDefault(-1), total.GetValueOrDefault(-1)));
         }
         return result;
     }
@@ -196,37 +196,12 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
             withShadowResponse.EnsureSuccessStatusCode();
             var withShadowResult = await withShadowResponse.Content.ReadFromJsonAsync<Result>();
 
-            result.Add(currentEntityType, new(nonShadowResult.count, withShadowResult.count));
+            result.Add(currentEntityType, new(nonShadowResult?.count ?? -1, withShadowResult?.count ?? -1));
         }
         return result;
     }
 
-
-
-    //public class EntityResult
-    //{
-    //    public EntityResult(long nonShadowCount, long totalCount)
-    //    {
-    //        this.nonShadowCount = nonShadowCount;
-    //        this.totalCount = totalCount;
-    //    }
-    //    public long nonShadowCount { get; set; }
-    //    public long totalCount { get; set; }
-    //}
-
-    public class Result
-    {
-        public long count { get; set; }
-        public Shard _shards { get; set; }
-    }
-
-    public class Shard
-    {
-        public int total { get; set; }
-        public int successful { get; set; }
-        public int skipped { get; set; }
-        public int failed { get; set; }
-    }
-
-    public record EntityTypeCount(long NonShadowCount, long TotalCount);
+    private record Result(long count, Shard _shards);
+    private record Shard(int total, int successful, int skipped, int failed);
+    private record EntityTypeCount(long NonShadowCount, long TotalCount);
 }

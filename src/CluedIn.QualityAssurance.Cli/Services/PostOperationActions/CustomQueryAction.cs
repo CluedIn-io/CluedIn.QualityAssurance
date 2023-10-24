@@ -21,7 +21,7 @@ internal class CustomQueryAction : IPostOperationAction
     private ILogger<CustomQueryAction> Logger { get; }
     private IEnvironment Environment { get; }
     private IFileSourceOperationOptions Options { get; }
-    private CustomOutputOptions CustomOptions { get; set; }
+    private CustomOutputOptions? CustomOptions { get; set; }
 
     public async Task ExecuteAsync(SingleIterationOperationResult result, CancellationToken cancellationToken)
     {

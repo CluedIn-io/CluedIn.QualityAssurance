@@ -70,12 +70,11 @@ internal class CodesAssertionAction : IPostOperationAction
                 {
                     ["codes"] = appendedDistinctCodes.ToList(),
                 }).ConfigureAwait(false);
-                var records = await result.ToListAsync(x => new Entity
-                {
-                    Id = x[nameof(Entity.Id)].As<string>(),
-                    EntityCodes = x[nameof(Entity.EntityCodes)].As<List<string>>(),
-                    NodeCodes = x[nameof(Entity.NodeCodes)].As<List<string>>(),
-                }).ConfigureAwait(false);
+                var records = await result.ToListAsync(x => new Entity(
+                    Id: x[nameof(Entity.Id)].As<string>(),
+                    EntityCodes: x[nameof(Entity.EntityCodes)].As<List<string>>(),
+                    NodeCodes: x[nameof(Entity.NodeCodes)].As<List<string>>()
+                )).ConfigureAwait(false);
 
                 //var allIds = records.Select(record => record.Id).ToHashSet();
 
@@ -104,12 +103,5 @@ internal class CodesAssertionAction : IPostOperationAction
         result.Output.Add("MissingCodesCount", totalNotMatching);
     }
 
-    private class Entity
-    {
-        public string Id { get; set; }
-
-        public List<string> EntityCodes { get; set; }
-
-        public List<string> NodeCodes { get; set; }
-    }
+    private record Entity(string Id, List<string> EntityCodes, List<string> NodeCodes);
 }
