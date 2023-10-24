@@ -93,7 +93,7 @@ internal class LocalEnvironment : IEnvironment
         return Task.FromResult(Options.Value.NewAccountAccessKey);
     }
 
-    private Uri EnsureTrailingSlash(Uri uri)
+    private static Uri EnsureTrailingSlash(Uri uri)
     {
         if (!uri.AbsoluteUri.EndsWith("/"))
         {

@@ -24,20 +24,12 @@ internal class FileSource
 
     public string EntityType { get; set; }
 
-    //public KeyValuePair<string, string> CustomEntityTypeMapping { get; set; }
-
     public Dictionary<string, string> CustomEntityTypesMapping { get; set; } = new Dictionary<string, string>();
 
     public bool IsExternalUploadFilePath { get; set; }
 
 
-    public string EntityTypeRoute
-    {
-        get
-        {
-            return EntityType.ToLowerInvariant();
-        }
-    }
+    public string EntityTypeRoute => EntityType.ToLowerInvariant();
 }
 
 public class CustomVocabularyMappingEntry

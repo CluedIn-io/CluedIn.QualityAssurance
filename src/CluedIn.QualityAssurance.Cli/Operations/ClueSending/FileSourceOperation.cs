@@ -23,8 +23,11 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
     private const int MaximumKeyPrefixLength = 50;
     private const int MaximumVocabularyCreationPoll = 10;
     private static readonly TimeSpan DelayAfterVocabularyCreationPoll = TimeSpan.FromSeconds(1);
-    private static readonly Regex InvalidEntityTypeNameRegex = new Regex(@"[^a-zA-Z0-9]");
-    private static readonly Regex InvalidVocabularyNameRegex = new Regex(@"[^a-zA-Z0-9\.]");
+    private static readonly Regex InvalidEntityTypeNameRegex = new(@"[^a-zA-Z0-9]");
+    private static readonly Regex InvalidVocabularyNameRegex = new(@"[^a-zA-Z0-9\.]");
+    private static readonly Regex EntityTypeRegex = new(@"{{EntityType\[([a-zA-Z0-9]+)\]}}");
+    private static readonly Regex VocabularyRegex = new(@"{{Vocabulary\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
+    private static readonly Regex VocabularyKeyRegex = new(@"{{VocabularyKey\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
 
     public FileSourceOperation(
         ILogger<FileSourceOperation<TOptions>> logger,
@@ -40,7 +43,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     protected ICollection<FileSource> FileSources { get; set; } = Array.Empty<FileSource>();
 
-    protected string EntityTypePrefix { get; set; }
+    protected string EntityTypePrefix { get; set; } = string.Empty;
 
     private ILogger<FileSourceOperation<TOptions>> Logger { get; }
 
@@ -128,8 +131,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         if (customMapping.MappingRequests.Any())
         {
-            var entityTypeRegex = new Regex(@"{{EntityType\[([a-zA-Z0-9]+)\]}}");
-            var foundEntityTypes = entityTypeRegex.Matches(customizationFileBody)
+            var foundEntityTypes = EntityTypeRegex.Matches(customizationFileBody)
                 .Select(match => match.Groups[1].Value)
                 .Distinct()
                 .ToList();
@@ -146,15 +148,11 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 }
             }
 
-
-            var vocabularyRegex = new Regex(@"{{Vocabulary\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
-            var vocabularyKeyRegex = new Regex(@"{{VocabularyKey\[([a-zA-Z0-9\.]+)\].(Id|Name)}}");
-
-            var foundVocabularies = vocabularyRegex.Matches(customizationFileBody)
+            var foundVocabularies = VocabularyRegex.Matches(customizationFileBody)
                 .Select(match => match.Groups[1].Value)
                 .Distinct()
                 .ToList();
-            var foundVocabularyKeys = vocabularyKeyRegex.Matches(customizationFileBody)
+            var foundVocabularyKeys = VocabularyKeyRegex.Matches(customizationFileBody)
                 .Select(match => match.Groups[1].Value)
                 .Distinct()
                 .ToList();
@@ -493,7 +491,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         // Sometimes it says vocabulary does not exist, when it does,
         // We need to ensure that it exists first before processing
 
-        for (int i = 0; i < MaximumVocabularyCreationPoll; ++i)
+        for (var i = 0; i < MaximumVocabularyCreationPoll; ++i)
         {
             Logger.LogInformation("Waiting for {DelayAfterVocabularyCreation} before checking whether vocabulary {VocabularyName} exists.",
                 DelayAfterVocabularyCreationPoll,
@@ -758,7 +756,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         FileSources = files.Select((file, fileIndex) =>
         {
             var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file);
-            string entityType = SanitizeForEntityType($"{fileIndex}x{fileNameWithoutExtension}");
+            var entityType = SanitizeForEntityType($"{fileIndex}x{fileNameWithoutExtension}");
 
             return new FileSource
             {
@@ -776,7 +774,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var entityType = $"{EntityTypePrefix}x{sanitizedSuffix}";
         if (entityType.Length > MaximumKeyPrefixLength)
         {
-            entityType = entityType.Substring(0, MaximumKeyPrefixLength);
+            entityType = entityType[..MaximumKeyPrefixLength];
         }
 
         return entityType;
@@ -788,7 +786,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var entityType = $"{EntityTypePrefix}x{sanitizedSuffix}";
         if (entityType.Length > MaximumKeyPrefixLength)
         {
-            entityType = entityType.Substring(0, MaximumKeyPrefixLength);
+            entityType = entityType[..MaximumKeyPrefixLength];
         }
 
         return entityType;

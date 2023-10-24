@@ -30,6 +30,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         PostOperationActions = postOperationActions ?? throw new ArgumentNullException(nameof(postOperationActions));
         HttpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     }
+
     private ILogger<ClueSendingOperation<TOptions>> Logger { get; }
 
     protected Organization? Organization { get; set; }
@@ -43,8 +44,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     private IEnumerable<IPostOperationAction> PostOperationActions { get; }
 
     private SingleIterationOperationResult? PreIngestionResult { get; set; }
-    protected IHttpClientFactory HttpClientFactory { get; }
 
+    protected IHttpClientFactory HttpClientFactory { get; }
 
     protected override async Task SetUpOperationAsync(CancellationToken cancellationToken)
     {
@@ -97,15 +98,19 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
                     throw;
                 }
             }
-            var result = new SingleIterationOperationResult();
-            result.HasErrors = true;
+            var result = new SingleIterationOperationResult
+            {
+                HasErrors = true
+            };
             return result;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "An exception has occurred while trying to perform test run.");
-            var result = new SingleIterationOperationResult();
-            result.HasErrors = true;
+            var result = new SingleIterationOperationResult
+            {
+                HasErrors = true
+            };
             return result;
         }
     }
@@ -215,9 +220,9 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
     protected virtual Task CreateOperationData(int iterationNumber)
     {
-        string testId = CreateTestId(iterationNumber);
+        var testId = CreateTestId(iterationNumber);
         var clientId = Options.ClientIdPrefix + testId;
-        Organization = new Organization
+        Organization = new Organization()
         {
             ClientId = clientId,
             Password = Options.Password,
@@ -231,11 +236,11 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     {
         if (Options.UseShortTestIdPrefix)
         {
-            return $"{OverallResult.StartTime.ToString("MMddHHmm")}x{iterationNumber}";
+            return $"{OverallResult.StartTime:MMddHHmm}x{iterationNumber}";
         }
         else
         {
-            return $"{OverallResult.StartTime.ToString("yyyyMMddHHmmss")}x{iterationNumber}";
+            return $"{OverallResult.StartTime:yyyyMMddHHmmss}x{iterationNumber}";
         }
     }
 
@@ -333,10 +338,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     {
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
-        if (configureClient != null)
-        {
-            configureClient(client);
-        }
+        configureClient?.Invoke(client);
 
         if (requireAuthorization)
         {
@@ -404,14 +406,15 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         return await reader.ReadToEndAsync().ConfigureAwait(false);
     }
 
-    protected SetupOperation CreateSetupOperation<T1>(T1 t1, Func<T1, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    protected static SetupOperation CreateSetupOperation<T1>(T1 t1, Func<T1, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
     {
         return new SetupOperation(
             cancellationToken => func(t1, cancellationToken),
             func.Method.Name,
             loggingScopeState);
     }
-    protected SetupOperation CreateSetupOperation<T1, T2>(T1 t1, T2 t2, Func<T1, T2, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+
+    protected static SetupOperation CreateSetupOperation<T1, T2>(T1 t1, T2 t2, Func<T1, T2, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
     {
         return new SetupOperation(
             cancellationToken => func(t1, t2, cancellationToken),

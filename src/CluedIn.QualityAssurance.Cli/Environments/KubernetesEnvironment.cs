@@ -14,7 +14,7 @@ namespace CluedIn.QualityAssurance.Cli.Environments;
 internal class KubernetesEnvironment : IEnvironment
 {
     private static readonly TimeSpan PortForwardConnectionAliveInterval = TimeSpan.FromMinutes(30);
-    private static readonly Dictionary<string, ServiceSettings> Settings = new Dictionary<string, ServiceSettings>
+    private static readonly Dictionary<string, ServiceSettings> Settings = new()
     {
         [nameof(Neo4jConnectionInfo)] = new ServiceSettings("neo4j", "cluedin-neo4j", "cluedin-neo4j-secrets", "neo4j-password", 7687),
         [nameof(RabbitMQConnectionInfo)] = new ServiceSettings("cluedin", "cluedin-rabbitmq", "cluedin-rabbitmq", "rabbitmq-password", 15672),
@@ -89,11 +89,7 @@ internal class KubernetesEnvironment : IEnvironment
 
         if (Connections.TryGetValue(name, out var foundInfo))
         {
-            var found = foundInfo.Info as T;
-            if (found == null)
-            {
-                throw new InvalidOperationException($"Found null info for connection with name '{name}'.");
-            }
+            var found = foundInfo.Info as T ?? throw new InvalidOperationException($"Found null info for connection with name '{name}'.");
             connectionInfo = found;
             return true;
         }
@@ -266,7 +262,7 @@ internal class KubernetesEnvironment : IEnvironment
         return Task.FromResult(NewAccountAccessKey);
     }
 
-    private Uri EnsureTrailingSlash(Uri uri)
+    private static Uri EnsureTrailingSlash(Uri uri)
     {
         if (!uri.AbsoluteUri.EndsWith("/"))
         {
