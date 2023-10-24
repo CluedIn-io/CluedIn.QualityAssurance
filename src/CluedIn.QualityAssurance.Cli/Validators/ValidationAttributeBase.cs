@@ -4,7 +4,7 @@ namespace CluedIn.QualityAssurance.Cli.Validators;
 
 internal abstract class ValidationAttributeBase : ValidationAttribute
 {
-    protected virtual ValidationResult MergeResults(params TryValidateResult[] tryValidationResults)
+    protected virtual ValidationResult? MergeResults(params TryValidateResult[] tryValidationResults)
     {
         var isValid = tryValidationResults.All(result => result.IsValid);
         if (isValid)
