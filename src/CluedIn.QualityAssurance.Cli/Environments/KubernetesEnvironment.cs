@@ -77,13 +77,15 @@ internal class KubernetesEnvironment : IEnvironment
         throw new InvalidOperationException($"Retrieved null connectionInfo '{name}'.");
     }
 
-    private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, [NotNullWhen(true)] out ServiceSettings? settings)
+    private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, out ServiceSettings settings)
         where T : class
     {
-        if (!Settings.TryGetValue(name, out settings))
+        if (!Settings.TryGetValue(name, out var foundSetting))
         {
             throw new NotSupportedException($"Invalid setting name '{name}'.");
         }
+
+        settings = foundSetting;
 
         if (Connections.TryGetValue(name, out var foundInfo))
         {
