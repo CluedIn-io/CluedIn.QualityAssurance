@@ -256,7 +256,7 @@ internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
             }
             catch (Exception ex)
             {
-                Logger.LogWarning("Failed to get data set id. Will retry in {TimeBetweenRetries}", DelayBetweenGetDataSetIdRetries);
+                Logger.LogWarning(ex, "Failed to get data set id. Will retry in {TimeBetweenRetries}", DelayBetweenGetDataSetIdRetries);
                 await Task.Delay(DelayBetweenGetDataSetIdRetries, cancellationToken);
             }
 
