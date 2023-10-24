@@ -12,20 +12,37 @@ internal class CluesHelper
 
         var clue = xmlDoc.SelectSingleNode("/clue");
 
-        clue.Attributes["organization"].Value = organizationId.ToString();
 
-        foreach (var node in xmlDoc.SelectNodes("//codes/value").OfType<XmlNode>())
+        var organizationAttribute = clue?.Attributes?["organization"];
+        if (organizationAttribute == null)
+        {
+            throw new InvalidOperationException("Organization attribute is null.");
+        }
+
+        organizationAttribute.Value = organizationId.ToString();
+
+        var valueNodes = xmlDoc.SelectNodes("//codes/value")?.OfType<XmlNode>() ?? Array.Empty<XmlNode>();
+        foreach (var node in valueNodes)
         {
             node.InnerText += idSuffix;
         }
 
-        foreach (var node in xmlDoc.SelectNodes("//edge").OfType<XmlNode>())
+        var edgeNodes = xmlDoc.SelectNodes("//edge")?.OfType<XmlNode>() ?? Array.Empty<XmlNode>();
+        foreach (var node in edgeNodes)
         {
-            node.Attributes["from"].Value += idSuffix;
-            node.Attributes["to"].Value += idSuffix;
+            var fromAttribute = node?.Attributes?["from"];
+            var toAttribute = node?.Attributes?["to"];
+
+            if (fromAttribute == null || toAttribute == null)
+            {
+                throw new InvalidOperationException("From or To Attribute is null.");
+            }
+            fromAttribute.Value += idSuffix;
+            toAttribute.Value += idSuffix;
         }
 
-        foreach (var node in xmlDoc.SelectNodes("//*[@origin]").OfType<XmlNode>())
+        var originNodes = xmlDoc.SelectNodes("//*[@origin]")?.OfType<XmlNode>() ?? Array.Empty<XmlNode>();
+        foreach (var node in originNodes)
         {
             node.Attributes["origin"].Value += idSuffix;
         }

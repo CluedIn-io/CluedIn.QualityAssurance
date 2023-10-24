@@ -46,9 +46,33 @@ internal class VerifyEdgeOperation : Operation<VerifyEdgeOptions>
 
             foreach (var edge in nodes.OfType<XmlNode>())
             {
-                var from = edge.Attributes["from"].Value.Replace("C:/", "/");
-                var type = edge.Attributes["type"].Value;
-                var to = edge.Attributes["to"].Value.Replace("C:/", "/");
+                if (edge == null)
+                {
+                    _logger.LogWarning("Found null node when checking result.");
+                    continue;
+                }
+                if (edge.Attributes == null)
+                {
+                    _logger.LogWarning("Found null node attributes when checking result.");
+                    continue;
+                }
+
+                var fromAttribute = edge.Attributes["from"];
+                var typeAttribute = edge.Attributes["type"];
+                var toAttribute = edge.Attributes["to"];
+
+                if (fromAttribute == null || typeAttribute == null || toAttribute == null)
+                {
+                    _logger.LogWarning("Found null attributes for (from/type/to) when checking result. Is null => From: {From}, Type: {Type}, To: {To}.",
+                        fromAttribute == null,
+                        typeAttribute == null,
+                        toAttribute == null);
+                    continue;
+                }
+
+                var from = fromAttribute.Value.Replace("C:/", "/");
+                var type = typeAttribute.Value;
+                var to = toAttribute.Value.Replace("C:/", "/");
 
                 var query = @$"MATCH (n:{organizationName})-[e:`{type}`]->(m:{organizationName})
                 WHERE '{from}{options.IdSuffix}' IN n.Codes
