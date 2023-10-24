@@ -100,7 +100,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
         }
 
-        return (new CustomMappingOptions(), null);
+        return (new CustomMappingOptions(), string.Empty);
     }
 
 
