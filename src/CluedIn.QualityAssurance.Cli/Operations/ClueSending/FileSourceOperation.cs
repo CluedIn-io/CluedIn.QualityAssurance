@@ -901,7 +901,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
             .Replace("{{VocabularyName}}", fileSource.VocabularyName)
             .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType);
+            .Replace("{{EntityType}}", fileSource.EntityType)
+            .Replace("{{KeysConfig}}", JsonSerializer.Serialize(new string[] { })); // TODO: Add Keysconfig
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
