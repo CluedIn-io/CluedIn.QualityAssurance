@@ -70,9 +70,21 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             var customMapping = jsonObj?["customMapping"];
             var requests = customMapping?["requests"]
                 ?.AsArray()
-                ?.Select(x => new CustomMappingRequest(
-                    x["name"].Deserialize<string>(),
-                    x["request"].ToString()))
+                ?.Select((request, index) => {
+                    var name = request["name"]?.Deserialize<string>();
+                    var requestBody = request["request"]?.ToString();
+
+                    if (name == null)
+                    {
+                        throw new InvalidOperationException($"Invalid custom request. Name is null for request {index}.");
+                    }
+
+                    if (requestBody == null)
+                    {
+                        throw new InvalidOperationException($"Invalid custom request. Body for request is null for request {index}.");
+                    }
+                    return new CustomMappingRequest(name, requestBody);
+                })
                 .ToList() ?? new List<CustomMappingRequest>();
             if (customMapping != null)
             {
