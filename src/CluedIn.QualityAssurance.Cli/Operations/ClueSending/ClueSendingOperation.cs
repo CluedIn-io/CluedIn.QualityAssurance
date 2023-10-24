@@ -328,7 +328,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Organization.AccessToken);
     }
 
-    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage requestMessage, CancellationToken cancellationToken, bool requireAuthorization = false, Action<HttpClient> configureClient = null, bool supressDebug = false)
+    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage requestMessage, CancellationToken cancellationToken, bool requireAuthorization = false, Action<HttpClient>? configureClient = null, bool suppressDebug = false)
     {
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
@@ -342,7 +342,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             AddAuthorizationHeader(requestMessage);
         }
 
-        if (!supressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
+        if (!suppressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
         {
             var requestContent = await requestMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
             Logger.LogDebug("Making request to {Uri} with {Content}.", requestMessage.RequestUri, requestContent);
@@ -355,7 +355,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 
         var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        if (!supressDebug)
+        if (!suppressDebug)
         {
             Logger.LogDebug("Got response from request to {Uri} {Content}", requestMessage.RequestUri, content);
         }
