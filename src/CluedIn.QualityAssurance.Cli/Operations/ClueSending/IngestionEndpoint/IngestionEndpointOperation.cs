@@ -75,65 +75,62 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
 
         int BatchSize = Options.IngestionBatchSize;
         var fileStream = GetUploadFileStream(fileSource);
-        using (var streamReader = new StreamReader(fileStream))
-        using (var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        using var streamReader = new StreamReader(fileStream);
+        using var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             BadDataFound = null,
-        }))
+        });
+        csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
+
+        var batch = new List<Dictionary<string, string>>(BatchSize);
+        var totalSent = 0;
+        try
         {
-            csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
-
-            var batch = new List<Dictionary<string, string>>(BatchSize);
-            var totalSent = 0;
-            try
+            await foreach (var currentRecord in csv.GetRecordsAsync<CsvRow>())
             {
-                var records = csv.GetRecords<CsvRow>();
-                foreach (var currentRecord in records)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    Logger.LogInformation("Aborting streaming because cancellation is requested.");
+                    return;
+                }
+                batch.Add(currentRecord.Columns);
+                if (batch.Count == BatchSize)
+                {
+                    var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+                    if (success)
                     {
-                        Logger.LogInformation("Aborting streaming because cancellation is requested.");
-                        return;
+                        totalSent += BatchSize;
+                        Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
                     }
-                    batch.Add(currentRecord.Columns);
-                    if (batch.Count == BatchSize)
+                    else
                     {
-                        var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-                        if (success)
-                        {
-                            totalSent += BatchSize;
-                            Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Failed to send batch. Ignoring batch.");
-                        }
-                        batch.Clear();
-                        if (Options.IngestionRequestsDelayInMilliseconds > 0)
-                        {
-                            await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken);
-                        }
+                        Logger.LogWarning("Failed to send batch. Ignoring batch.");
+                    }
+                    batch.Clear();
+                    if (Options.IngestionRequestsDelayInMilliseconds > 0)
+                    {
+                        await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to send data.");
-            }
-
-            if (batch.Count > 0)
-            {
-                Logger.LogInformation("Sending last batch of rows.");
-                var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-                if (success)
-                {
-                    totalSent += batch.Count;
-                    Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-                }
-                batch.Clear();
-            }
-            Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send data.");
+        }
+
+        if (batch.Count > 0)
+        {
+            Logger.LogInformation("Sending last batch of rows.");
+            var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+            if (success)
+            {
+                totalSent += batch.Count;
+                Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
+            }
+            batch.Clear();
+        }
+        Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
     }
 
     private async Task<bool> SendBatchToIngestionEndpointAsync(FileSource fileSource, List<Dictionary<string, string>> batch, CancellationToken cancellationToken)

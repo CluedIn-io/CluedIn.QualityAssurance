@@ -539,7 +539,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             Logger.LogInformation("Waiting for {DelayAfterVocabularyCreation} before checking whether vocabulary {VocabularyName} exists.",
                 DelayAfterVocabularyCreationPoll,
                 vocabularyName);
-            await Task.Delay(DelayAfterVocabularyCreationPoll).ConfigureAwait(false);
+            await Task.Delay(DelayAfterVocabularyCreationPoll, cancellationToken).ConfigureAwait(false);
             try
             {
                 var vocabularyId = await GetVocabularyIdFromName(vocabularyName, cancellationToken).ConfigureAwait(false);
@@ -552,7 +552,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
             catch (Exception ex)
             {
-                this.Logger.LogWarning(ex, "Failed to poll for {VocabularyName}.", vocabularyName);
+                Logger.LogWarning(ex, "Failed to poll for {VocabularyName}.", vocabularyName);
             }
         }
 
@@ -794,7 +794,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             throw new InvalidOperationException("No input files found.");
         }
 
-        this.Logger.LogInformation("There are {TotalFiles} files to be processed.", files.Count());
+        Logger.LogInformation("There are {TotalFiles} files to be processed.", files.Count());
         EntityTypePrefix = $"testX{testId}";
         FileSources = files.Select((file, fileIndex) =>
         {

@@ -28,7 +28,6 @@ internal class FileSource
 
     public bool IsExternalUploadFilePath { get; set; }
 
-
     public string EntityTypeRoute => EntityType.ToLowerInvariant();
 }
 
