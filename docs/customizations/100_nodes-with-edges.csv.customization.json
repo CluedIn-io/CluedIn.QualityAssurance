@@ -1,111 +1,38 @@
 {
   "customMapping": {
-	"shouldAutoGenerateOriginEntityCodeKey": false,
-    "requests": [{
-        "name": "AddCustomOrigin",
-        "request": {
-          "operationName": "saveCustomOriginClueMappingConfiguration",
-          "variables": {
-            "annotationId": "{{AnnotationId}}",
-            "customOrigin": "nodeid"
-          },
-          "query": "mutation saveCustomOriginClueMappingConfiguration($annotationId: ID!, $customOrigin: String) {\n  management {\n    saveCustomOriginClueMappingConfiguration(\n      annotationId: $annotationId\n      customOrigin: $customOrigin\n    )\n    __typename\n  }\n}\n"
-        }
+    "shouldAutoMap": false,
+    "entityType": "MyNode",
+    "vocabularyName": "MyNode",
+    "origin": "nodeid",
+    "originEntityCodeKey": "{{VocabularyKey[MyNode.id].FullName}}",
+    "nameKey": "{{VocabularyKey[MyNode.name].FullName}}",
+    "keyMappings": [{
+        "field": "id",
+        "key": "{{VocabularyKey[MyNode.id].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
       }, {
-        "name": "RemoveNodeIdVocabularyKey",
-        "request": {
-          "operationName": "modifyBatchVocabularyClueMappingConfiguration",
-          "variables": {
-            "annotationId": "{{AnnotationId}}",
-            "batchPropertyMappings": {
-              "propertyMappingSettings": [{
-                  "vocabKey": "{{VocabularyKey}}.id",
-                  "useAsEntityCode": false
-                }
-              ]
-            }
-          },
-          "query": "mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {\n  management {\n    modifyBatchVocabularyClueMappingConfiguration(\n      annotationId: $annotationId\n      batchPropertyMappings: $batchPropertyMappings\n    )\n    __typename\n  }\n}\n"
-        }
+        "field": "parentId",
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
       }, {
-        "name": "RemoveParentIdVocabularyKey",
-        "request": {
-          "operationName": "modifyBatchVocabularyClueMappingConfiguration",
-          "variables": {
-            "annotationId": "{{AnnotationId}}",
-            "batchPropertyMappings": {
-              "propertyMappingSettings": [{
-                  "vocabKey": "{{VocabularyKey}}.id",
-                  "useAsEntityCode": false
-                }
-              ]
-            }
-          },
-          "query": "mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {\n  management {\n    modifyBatchVocabularyClueMappingConfiguration(\n      annotationId: $annotationId\n      batchPropertyMappings: $batchPropertyMappings\n    )\n    __typename\n  }\n}\n"
-        }
-      }, {
-        "name": "Add Edge",
-        "request": {
-          "operationName": "addPropertiesToAnnotation",
-          "variables": {
-            "id": "{{AnnotationId}}",
-            "properties": [{
-                "displayName": "Id",
-                "key": "{{VocabularyKey}}_id",
-                "vocabKey": "{{VocabularyKey}}.id",
-                "coreVocab": null,
-                "useAsEntityCode": false,
-                "useAsAlias": null,
-                "entityCodeOrigin": null,
-                "vocabularyKeyId": true,
-                "type": "int",
-                "edges": null,
-                "validations": [{
-                    "id": "b3f11218-9bc0-414b-983b-92a995936839",
-                    "parameters": null
-                  }
-                ],
-                "transformations": []
-              }, {
-                "displayName": "Name",
-                "key": "{{VocabularyKey}}_name",
-                "vocabKey": "{{VocabularyKey}}.name",
-                "coreVocab": null,
-                "useAsEntityCode": false,
-                "useAsAlias": null,
-                "entityCodeOrigin": null,
-                "vocabularyKeyId": true,
-                "type": "string",
-                "edges": null,
-                "validations": [],
-                "transformations": []
-              }, {
-                "displayName": "Parent Id",
-                "key": "{{VocabularyKey}}_parentId",
-                "vocabKey": "{{VocabularyKey}}.parentId",
-                "coreVocab": null,
-                "useAsEntityCode": false,
-                "useAsAlias": null,
-                "entityCodeOrigin": null,
-                "vocabularyKeyId": true,
-                "type": "int",
-                "edges": [{
-                    "edgeType": "/ParentOf",
-                    "entityType": "/{{EntityType}}",
-                    "origin": "nodeid"
-                  }
-                ],
-                "validations": [{
-                    "id": "b3f11218-9bc0-414b-983b-92a995936839",
-                    "parameters": null
-                  }
-                ],
-                "transformations": []
-              }
-            ]
-          },
-          "query": "mutation addPropertiesToAnnotation($id: ID, $properties: [InputPropertyAnnotation]) {\n  preparation {\n    addPropertiesToAnnotation(id: $id, properties: $properties)\n    __typename\n  }\n}\n"
-        }
+        "field": "name",
+        "key": "{{VocabularyKey[MyNode.name].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }
+    ],
+    "entityCodes": [],
+    "edges": [{
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "entityType": "{{EntityType[MyNode]}}",
+        "edgeType": "ParentOf",
+        "origin": "nodeid",
+        "direction": "outgoing"
       }
     ]
   },
