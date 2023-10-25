@@ -82,7 +82,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                         {
                             var name = request?["name"]?.Deserialize<string>();
                             var requestBody = request?["request"]?.ToString();
-                            var outputVariablesNode = request?["output"];
+                            var outputVariablesNode = request?["outputs"];
 
                             if (name == null)
                             {
@@ -94,7 +94,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                                 throw new InvalidOperationException($"Invalid custom request. Body for request is null for request {index}.");
                             }
 
-                            var outputVariables = outputVariablesNode?.Deserialize<List<RequestOutputVariable>>() ?? new List<RequestOutputVariable>();
+                            var outputVariables = outputVariablesNode?.Deserialize<List<RequestOutputVariable>>(serializeOptions) ?? new List<RequestOutputVariable>();
                             return new CustomRequest(name, requestBody, outputVariables);
                         })
                         .ToList() ?? new List<CustomRequest>();
@@ -410,7 +410,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var result = replacedBody;
         foreach (var variable in runtimeSettings.OutputVariables)
         {
-            result = result.Replace($"{{{{Env[{variable.Key}]}}}}", variable.Value);
+            result = result.Replace($"{{{{Var[{variable.Key}]}}}}", variable.Value);
         }
         return result;
     }
