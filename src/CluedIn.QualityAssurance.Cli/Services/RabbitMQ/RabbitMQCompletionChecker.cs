@@ -18,6 +18,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     {
         @".*Messages.*\.(.*Command).*",
         @"clue_(datasource)_process_(.*)",
+        @"(Stream)Subscriber-(ingestion|deadLetter|connector)-(.*)",
     };
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
