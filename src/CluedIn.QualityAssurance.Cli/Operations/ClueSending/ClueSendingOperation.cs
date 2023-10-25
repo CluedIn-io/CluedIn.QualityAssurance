@@ -422,6 +422,14 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             loggingScopeState);
     }
 
+    protected static SetupOperation CreateSetupOperation<T1, T2, T3>(T1 t1, T2 t2, T3 t3, Func<T1, T2, T3, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    {
+        return new SetupOperation(
+            cancellationToken => func(t1, t2, t3, cancellationToken),
+            func.Method.Name,
+            loggingScopeState);
+    }
+
     private void PopulateQueueStats(SingleIterationOperationResult result, RabbitMQCompletionResult rabbitMqCompletionResult, CancellationToken cancellationToken)
     {
         foreach (var current in rabbitMqCompletionResult.QueuePollingHistory)

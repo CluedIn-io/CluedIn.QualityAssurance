@@ -31,18 +31,9 @@ internal class FileSource
     public string EntityTypeRoute => EntityType.ToLowerInvariant();
 }
 
-public class CustomVocabularyMappingEntry
+public record CustomVocabularyMappingEntry(string Name, Guid Id)
 {
-    public string Name { get; set; }
-
-    public Guid Id { get; set; }
-
-    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; set; } = new Dictionary<string, CustomVocabularyKeyMappingEntry>();
+    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; init; } = new Dictionary<string, CustomVocabularyKeyMappingEntry>();
 }
 
-public class CustomVocabularyKeyMappingEntry
-{
-    public string Name { get; set; }
-
-    public Guid Id { get; set; }
-}
+public record CustomVocabularyKeyMappingEntry(string Name, Guid Id);

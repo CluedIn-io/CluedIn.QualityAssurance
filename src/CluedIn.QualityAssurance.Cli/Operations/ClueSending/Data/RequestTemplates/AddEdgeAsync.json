@@ -1,0 +1,20 @@
+{
+  "operationName": "addEdgeMapping",
+  "variables": {
+    "annotationId": "{{AnnotationId}}",
+    "edgeConfiguration": {
+      "edgeProperties": [],
+      "entityTypeConfiguration": {
+        "new": false,
+        "icon": "Twitter",
+        "entityType": "/{{EntityType}}",
+        "displayName": "{{EntityType}}"
+      },
+      "edgeType": "/{{EdgeType}}",
+      "origin": "{{Origin}}",
+      "direction": "{{EdgeDirection}}"
+    },
+    "key": "{{VocabularyKeyFullName}}"
+  },
+  "query": "mutation addEdgeMapping($annotationId: ID!, $key: String!, $edgeConfiguration: InputEdgeConfiguration) {\n  management {\n    addEdgeMapping(\n      annotationId: $annotationId\n      key: $key\n      edgeConfiguration: $edgeConfiguration\n    )\n    __typename\n  }\n}\n"
+}

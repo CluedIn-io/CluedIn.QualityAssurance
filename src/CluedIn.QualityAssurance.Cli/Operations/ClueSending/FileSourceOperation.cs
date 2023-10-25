@@ -3,16 +3,17 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using CluedIn.QualityAssurance.Cli.Models.Operations;
-using Spectre.Console;
 using CluedIn.QualityAssurance.Cli.Environments;
+using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.Text.RegularExpressions;
-using CluedIn.Core;
-using CluedIn.Core.Data.Vocabularies;
 using JsonCons.JsonPath;
+using Spectre.Console;
+
+using SystemEnvironment = System.Environment;
+using CluedIn.Core.Data;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -92,9 +93,9 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                     }
 
                     var outputVariables = outputVariablesNode?.Deserialize<List<RequestOutputVariable>>() ?? new List<RequestOutputVariable>();
-                    return new CustomMappingRequest(name, requestBody, outputVariables);
+                    return new CustomRequest(name, requestBody, outputVariables);
                 })
-                .ToList() ?? new List<CustomMappingRequest>();
+                .ToList() ?? new List<CustomRequest>();
             if (customMapping != null)
             {
                 var deserialized = customMapping.Deserialize<CustomMappingOptions>(serializeOptions);
@@ -117,7 +118,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
     {
         using var scope = CreateLoggingScope(fileSource);
         var (customMapping, customizationFileBody) = await GetTestResultCustomizationsAsync(fileSource).ConfigureAwait(false);
-        if (customMapping.EntityType != null) 
+        if (customMapping.EntityType != null)
         {
             var mappedType = SanitizeForEntityType(customMapping.EntityType);
             Logger.LogInformation("Using custom EntityType {EntityType}, mapped to {MappedEntityType}.", customMapping.EntityType, mappedType);
@@ -135,85 +136,126 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         operations.Add(CreateSetupOperation(fileSource, GetAnnotationIdAsync));
         operations.Add(CreateSetupOperation(fileSource, customMapping.OriginEntityCodeKey, SetOriginEntityCodeKeyAsync));
 
-        if (customMapping.MappingRequests.Any())
+        AddCustomEntityTypeOperations(operations, fileSource, customizationFileBody);
+        AddCustomVocabularyAndKeyOperations(operations, fileSource, customizationFileBody);
+        AddPropertyMappingOperations(operations, fileSource, customMapping, customizationFileBody);
+        AddEntityCodeOperations(operations, fileSource, customMapping, customizationFileBody);
+        AddEntityEdgeOperations(operations, fileSource, customMapping, customizationFileBody);
+
+        AddCustomRequestOperations(operations, fileSource, customMapping, customizationFileBody);
+    }
+
+    private void AddEntityEdgeOperations(List<SetupOperation> operations, FileSource fileSource, CustomMappingOptions customMapping, string customizationFileBody)
+    {
+        foreach (var entityEdge in customMapping.EntityEdges)
         {
-            var foundEntityTypes = EntityTypeRegex.Matches(customizationFileBody)
-                .Select(match => match.Groups[1].Value)
-                .Distinct()
-                .ToList();
-
-            if (foundEntityTypes.Any())
-            {
-                Logger.LogInformation("Found additional EntityType(s) {EntityTypes}.", string.Join(",", foundEntityTypes));
-                foreach (var currentEntityType in foundEntityTypes)
-                {
-                    var mappedType = SanitizeForEntityType(currentEntityType);
-                    Logger.LogInformation("Using additional entityType {CustomEntityType}, mapped to {MappedCustomEntityType}.", currentEntityType, mappedType);
-                    operations.Add(CreateSetupOperation(mappedType, CreateEntityTypeIfNotExistsAsync, CreateLoggingScopeState(fileSource)));
-                    fileSource.CustomEntityTypesMapping.Add(currentEntityType, mappedType);
-                }
-            }
-
-            var foundVocabularies = VocabularyRegex.Matches(customizationFileBody)
-                .Select(match => match.Groups[1].Value)
-                .Distinct()
-                .ToList();
-            var foundVocabularyKeys = VocabularyKeyRegex.Matches(customizationFileBody)
-                .Select(match => match.Groups[1].Value)
-                .Distinct()
-                .ToList();
-            var foundEnvironmentVariables = EnvironmentVariableRegex.Matches(customizationFileBody)
-                .Select(match => match.Groups[1].Value)
-                .Distinct()
-                .ToList();
-
-            fileSource.EnvironmentVariables = foundEnvironmentVariables;
-
-            // Should probably be a dictionary
-            var vocabulariesToCreate = foundVocabularies.Select(vocabulary => new CustomVocabulary(vocabulary)).ToList();
-
-            if (foundVocabularies.Any())
-            {
-                Logger.LogInformation("Found additional Vocabulary {Vocabularies}.", string.Join(",", foundVocabularies));
-            }
-
-            if (foundVocabularyKeys.Any())
-            {
-                Logger.LogInformation("Found additional VocabularyKey {VocabularyKeys}.", string.Join(",", foundVocabularyKeys));
-                foreach (var currentKey in foundVocabularyKeys)
-                {
-                    var currentKeyParts = currentKey.Split('.');
-                    var vocabularyName = string.Join(".", currentKeyParts.SkipLast(1));
-                    if (!vocabulariesToCreate.Any(x => x.Name == vocabularyName))
-                    {
-                        vocabulariesToCreate.Add(new CustomVocabulary(vocabularyName));
-
-                    }
-
-                    var vocab = vocabulariesToCreate.Single(x => x.Name == vocabularyName);
-                    if (!vocab.Keys.Any(key => key.Name == currentKey))
-                    {
-                        vocab.Keys.Add(new CustomVocabularyKey(currentKeyParts.Last()));
-                    }
-                }
-            }
-
-            Logger.LogInformation("Using custom vocabularies {CustomVocabularies} and its keys.", vocabulariesToCreate.Select(x => x.Name));
-            foreach (var current in vocabulariesToCreate)
-            {
-                var loggingScopeState = CreateLoggingScopeState(fileSource);
-                loggingScopeState.Add("CustomVocabularyName", current.Name);
-                operations.Add(CreateSetupOperation(fileSource, current, CreateCustomVocabularyAsync, loggingScopeState));
-            }
+            operations.Add(CreateSetupOperation(fileSource, entityEdge, AddEntityEdgeAsync));
         }
+    }
 
-        var runtimeVariables = new Dictionary<string, string>();
-        Logger.LogInformation("Using custom mapping {CustomMapping}.", customMapping.MappingRequests.Select(x => x.Name));
-        foreach (var current in customMapping.MappingRequests)
+    private void AddEntityCodeOperations(List<SetupOperation> operations, FileSource fileSource, CustomMappingOptions customMapping, string customizationFileBody)
+    {
+        foreach (var entityCode in customMapping.EntityCodes)
+        {
+            operations.Add(CreateSetupOperation(fileSource, entityCode, AddEntityCodeAsync));
+        }
+    }
+
+    private void AddPropertyMappingOperations(List<SetupOperation> operations, FileSource fileSource, CustomMappingOptions customMapping, string customizationFileBody)
+    {
+        foreach (var keyMapping in customMapping.KeyMappings)
+        {
+            operations.Add(CreateSetupOperation(fileSource, keyMapping, AddPropertyMappingAsync));
+        }
+    }
+
+    private void AddCustomRequestOperations(List<SetupOperation> operations, FileSource fileSource, CustomMappingOptions customMapping, string customizationFileBody)
+    {
+        var runtimeEnvironmentVariables = EnvironmentVariableRegex.Matches(customizationFileBody)
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToList();
+        var runtimeOutputVariables = RuntimeVariableRegex.Matches(customizationFileBody)
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToDictionary(variable => variable, variable => string.Empty);
+        var runtimeSettings = new RuntimeSettings(runtimeEnvironmentVariables, runtimeOutputVariables);
+        Logger.LogInformation("Using custom mapping {CustomMapping}.", customMapping.CustomRequests.Select(x => x.Name));
+        foreach (var current in customMapping.CustomRequests)
         {
             var loggingScopeState = CreateLoggingScopeState(fileSource);
             loggingScopeState.Add("MappingRequestName", current.Name);
-            operations.Add(CreateSetupOperation(fileSource, current, runtimeVariables, SendCustomMappingRequestAsync, loggingScopeState));
+            operations.Add(CreateSetupOperation(fileSource, current, runtimeSettings, SendCustomRequestAsync, loggingScopeState));
+        }
+    }
+
+    private void AddCustomVocabularyAndKeyOperations(List<SetupOperation> operations, FileSource fileSource, string customizationFileBody)
+    {
+        var foundVocabularies = VocabularyRegex.Matches(customizationFileBody)
+                    .Select(match => match.Groups[1].Value)
+                    .Distinct()
+                    .ToList();
+        var foundVocabularyKeys = VocabularyKeyRegex.Matches(customizationFileBody)
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToList();
+
+
+        // Should probably be a dictionary
+        var vocabulariesToCreate = foundVocabularies.Select(vocabulary => new CustomVocabulary(vocabulary)).ToList();
+
+        if (foundVocabularies.Any())
+        {
+            Logger.LogInformation("Found additional Vocabulary {Vocabularies}.", string.Join(",", foundVocabularies));
+        }
+
+        if (foundVocabularyKeys.Any())
+        {
+            Logger.LogInformation("Found additional VocabularyKey {VocabularyKeys}.", string.Join(",", foundVocabularyKeys));
+            foreach (var currentKey in foundVocabularyKeys)
+            {
+                var currentKeyParts = currentKey.Split('.');
+                var vocabularyName = string.Join(".", currentKeyParts.SkipLast(1));
+                if (!vocabulariesToCreate.Any(x => x.Name == vocabularyName))
+                {
+                    vocabulariesToCreate.Add(new CustomVocabulary(vocabularyName));
+
+                }
+
+                var vocab = vocabulariesToCreate.Single(x => x.Name == vocabularyName);
+                if (!vocab.Keys.Any(key => key.Name == currentKey))
+                {
+                    vocab.Keys.Add(new CustomVocabularyKey(currentKeyParts.Last()));
+                }
+            }
+        }
+
+        Logger.LogInformation("Using custom vocabularies {CustomVocabularies} and its keys.", vocabulariesToCreate.Select(x => x.Name));
+        foreach (var current in vocabulariesToCreate)
+        {
+            var loggingScopeState = CreateLoggingScopeState(fileSource);
+            loggingScopeState.Add("CustomVocabularyName", current.Name);
+            operations.Add(CreateSetupOperation(fileSource, current, CreateCustomVocabularyAsync, loggingScopeState));
+        }
+    }
+
+    private void AddCustomEntityTypeOperations(List<SetupOperation> operations, FileSource fileSource, string customizationFileBody)
+    {
+        var foundEntityTypes = EntityTypeRegex.Matches(customizationFileBody)
+            .Select(match => match.Groups[1].Value)
+            .Distinct()
+            .ToList();
+
+        if (foundEntityTypes.Any())
+        {
+            Logger.LogInformation("Found additional EntityType(s) {EntityTypes}.", string.Join(",", foundEntityTypes));
+            foreach (var currentEntityType in foundEntityTypes)
+            {
+                var mappedType = SanitizeForEntityType(currentEntityType);
+                Logger.LogInformation("Using additional entityType {CustomEntityType}, mapped to {MappedCustomEntityType}.", currentEntityType, mappedType);
+                operations.Add(CreateSetupOperation(mappedType, CreateEntityTypeIfNotExistsAsync, CreateLoggingScopeState(fileSource)));
+                fileSource.CustomEntityTypesMapping.Add(currentEntityType, mappedType);
+            }
         }
     }
 
@@ -256,10 +298,10 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         return Task.CompletedTask;
     }
 
-    private async Task SendCustomMappingRequestAsync(
+    private async Task SendCustomRequestAsync(
         FileSource fileSource,
-        CustomMappingRequest mappingRequest,
-        Dictionary<string, string> runtimeVariables,
+        CustomRequest mappingRequest,
+        RuntimeSettings runtimeSettings,
         CancellationToken cancellationToken)
     {
         Logger.LogDebug("Begin sending custom mapping request '{CustomMappingRequestName}'", mappingRequest.Name);
@@ -267,7 +309,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var requestUri = serverUris.UiGraphqlUri;
 
         var body = mappingRequest.Request;
-        var replacedBody = ReplaceParameters(fileSource, body);
+        var replacedBody = ReplaceParameters(fileSource, runtimeSettings, body);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -299,7 +341,19 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                     {
                         throw new InvalidOperationException($"Output variable {outputVariable.Name} value '{value}' is null or whitespace.");
                     }
-                    runtimeVariables.Add(outputVariable.Name, value);
+                    if (runtimeSettings.OutputVariables.TryGetValue(outputVariable.Name, out var retrievedValue))
+                    {
+                        Logger.LogDebug("Overriding runtime output variable '{VariableName}' with original value {OriginalValue} with value '{NewValue}'.",
+                            outputVariable.Name,
+                            retrievedValue,
+                            value);
+                        runtimeSettings.OutputVariables[outputVariable.Name] = value;
+                    }
+                    else
+                    {
+                        Logger.LogDebug("Adding runtime output variable '{VariableName}' with value '{VariableValue}'.", outputVariable.Name, value);
+                        runtimeSettings.OutputVariables.Add(outputVariable.Name, value);
+                    }
                 }
             }
 
@@ -308,35 +362,84 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         Logger.LogDebug("End sending custom mapping request '{CustomMappingRequestName}'", mappingRequest.Name);
     }
 
-    private string ReplaceParameters(FileSource fileSource, string body)
+    private string ReplaceParameters(FileSource fileSource, RuntimeSettings runtimeSettings, string body)
     {
-        var replacedBody = body
+        var replacedBody = ReplaceFileSourceParameters(fileSource, body);
+        replacedBody = ReplaceOrganizationParameters(replacedBody);
+        replacedBody = ReplaceCustomEntityTypeParameters(fileSource, replacedBody);
+        replacedBody = ReplaceCustomVocabularyParameters(fileSource, replacedBody);
+        replacedBody = ReplaceEnvironmentVariableParameters(runtimeSettings, replacedBody);
+        replacedBody = ReplaceOutputVariableParameters(runtimeSettings, replacedBody);
+
+        return replacedBody;
+    }
+
+    private string ReplaceEnvironmentVariableParameters(RuntimeSettings runtimeSettings, string replacedBody)
+    {
+        Logger.LogDebug("Replacing environment variables.");
+        var result = replacedBody;
+        foreach (var variableName in runtimeSettings.EnvironmentVariables)
+        {
+            var value = SystemEnvironment.GetEnvironmentVariable(variableName);
+            result = result.Replace($"{{{{Env[{variableName}]}}}}", value);
+        }
+        return result;
+    }
+
+    private string ReplaceOutputVariableParameters(RuntimeSettings runtimeSettings, string replacedBody)
+    {
+        Logger.LogDebug("Replacing environment variables.");
+        var result = replacedBody;
+        foreach (var variable in runtimeSettings.OutputVariables)
+        {
+            result = result.Replace($"{{{{Env[{variable.Key}]}}}}", variable.Value);
+        }
+        return result;
+    }
+
+    private static string ReplaceFileSourceParameters(FileSource fileSource, string body)
+    {
+        return body
             .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
             .Replace("{{VocabularyName}}", fileSource.VocabularyName.ToString())
             .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
             .Replace("{{EntityType}}", fileSource.EntityType.ToString())
-            .Replace("{{OrganizationId}}", Organization.OrganizationId.ToString())
-            .Replace("{{UserId}}", Organization.UserId.ToString())
             .Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
             .Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString());
+    }
 
+    private string ReplaceOrganizationParameters(string replacedBody)
+    {
+        replacedBody = replacedBody
+            .Replace("{{OrganizationId}}", Organization.OrganizationId.ToString())
+            .Replace("{{UserId}}", Organization.UserId.ToString());
+        return replacedBody;
+    }
+
+    private static string ReplaceCustomEntityTypeParameters(FileSource fileSource, string text)
+    {
         foreach (var currentMapping in fileSource.CustomEntityTypesMapping)
         {
-            replacedBody = replacedBody.Replace($"{{{{EntityType[{currentMapping.Key}]}}}}", currentMapping.Value);
+            text = text.Replace($"{{{{EntityType[{currentMapping.Key}]}}}}", currentMapping.Value);
         }
 
+        return text;
+    }
+
+    private static string ReplaceCustomVocabularyParameters(FileSource fileSource, string text)
+    {
         foreach (var currentMapping in fileSource.CustomVocabulariesMapping)
         {
-            replacedBody = replacedBody.Replace($"{{{{Vocabulary[{currentMapping.Key}].Id}}}}", currentMapping.Value.Id.ToString());
-            replacedBody = replacedBody.Replace($"{{{{Vocabulary[{currentMapping.Key}].Name}}}}", currentMapping.Value.Name);
+            text = text.Replace($"{{{{Vocabulary[{currentMapping.Key}].Id}}}}", currentMapping.Value.Id.ToString());
+            text = text.Replace($"{{{{Vocabulary[{currentMapping.Key}].Name}}}}", currentMapping.Value.Name);
             foreach (var currentKeyMapping in currentMapping.Value.KeysMapping)
             {
-                replacedBody = replacedBody.Replace($"{{{{VocabularyKey[{currentMapping.Key}.{currentKeyMapping.Key}].Id}}}}", currentKeyMapping.Value.Id.ToString());
-                replacedBody = replacedBody.Replace($"{{{{VocabularyKey[{currentMapping.Key}.{currentKeyMapping.Key}].Name}}}}", currentKeyMapping.Value.Name);
+                text = text.Replace($"{{{{VocabularyKey[{currentMapping.Key}.{currentKeyMapping.Key}].Id}}}}", currentKeyMapping.Value.Id.ToString());
+                text = text.Replace($"{{{{VocabularyKey[{currentMapping.Key}.{currentKeyMapping.Key}].Name}}}}", currentKeyMapping.Value.Name);
             }
         }
 
-        return replacedBody;
+        return text;
     }
 
     protected async Task CreateEntityTypeIfNotExistsAsync(string entityType, CancellationToken cancellationToken)
@@ -345,7 +448,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         if (entityId != null)
         {
-            Logger.LogInformation("Skiping creation of Entity Type {EntityType} because it exists.", entityType);
+            Logger.LogInformation("Skipping creation of Entity Type {EntityType} because it exists.", entityType);
             return;
         }
 
@@ -447,20 +550,93 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         {
             ["MappedCustomVocabularyName"] = mappedName,
         });
+
         // TODO: allow setting of custom entity type instead of just fileSource.EntityType
         var vocabularyId = await CreateVocabularyIfNotExistsAsync(mappedName, fileSource.EntityType, cancellationToken);
 
-
         var mapping = new CustomVocabularyMappingEntry
-        {
-            Name = mappedName,
-            Id = vocabularyId,
-        };
-
+        (
+            Name: mappedName,
+            Id: vocabularyId
+        );
 
         var keys = await GetVocabularyKeysFromVocabularyIdAsync(vocabularyId, cancellationToken).ConfigureAwait(false);
 
-        
+        await BatchCreateVocabularyKeys(vocabulary, vocabularyId, mapping, keys, cancellationToken).ConfigureAwait(false);
+        fileSource.CustomVocabulariesMapping.Add(vocabulary.Name, mapping);
+    }
+
+    private async Task BatchCreateVocabularyKeys(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> existingKeys, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var keys = new List<CreateVocabularyKeyModel>();
+        foreach (var vocabularyKey in vocabulary.Keys)
+        {
+            if (keys.Any(key => key.Name == vocabularyKey.Name))
+            {
+                Logger.LogInformation("Skipping creation of VocabularyKeyName {VocabularyKeyName} because it exists.", vocabularyKey.Name);
+                continue;
+            }
+
+            Logger.LogInformation("Creating VocabularyKeyName {VocabularyKeyName} because it does not exist.", vocabularyKey.Name);
+            keys.Add(new CreateVocabularyKeyModel
+            (
+                VocabularyId: vocabularyId,
+                DisplayName: vocabularyKey.Name,
+                Name: vocabularyKey.Name,
+                DataType: "Text",
+                Storage: vocabularyKey.Storage,
+                IsVisible: true,
+                GroupName: vocabularyKey.GroupName
+            ));
+        }
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(keys), Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var result = await response.Content
+            .DeserializeToAnonymousTypeAsync(new[]
+            {
+                new
+                {
+                    vocabularyKey = string.Empty,
+                    status = string.Empty,
+                    id = (Guid?)null,
+                    error = (string?)null,
+                }
+            })
+            .ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+
+        foreach (var keyResult in result)
+        {
+            var keyId = Guid.Empty;
+            if (keyResult.status != "Success")
+            {
+                Logger.LogWarning("An error occurred while trying to create vocabulary key. However, it might be already created. Polling to check.");
+                var (vocabularyKeyId, _) = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, keyResult.vocabularyKey, cancellationToken).ConfigureAwait(false);
+                keyId = vocabularyKeyId;
+            }
+            keyId = keyResult.id.GetValueOrDefault();
+            if (keyId == Guid.Empty)
+            {
+                throw new InvalidOperationException("Invalid key id. It is empty.");
+            }
+            mapping.KeysMapping.Add(keyResult.vocabularyKey, new CustomVocabularyKeyMappingEntry
+            (
+                Name: keyResult.vocabularyKey,
+                Id: keyId
+            ));
+        }
+        await Task.Delay(TimeSpan.FromMilliseconds(Options.DelayAfterVocabularyKeyCreationInMilliseconds), cancellationToken);
+    }
+
+    private async Task CreateVocabularyKeys(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> keys, CancellationToken cancellationToken)
+    {
         foreach (var vocabularyKey in vocabulary.Keys)
         {
             using var vocabularyKeyScope = Logger.BeginScope(new Dictionary<string, object>
@@ -469,7 +645,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             });
             if (keys.Any(key => key.Name == vocabularyKey.Name))
             {
-                Logger.LogInformation("Skiping creation of VocabularyKeyName {VocabularyKeyName} because it exists.", vocabularyKey.Name);
+                Logger.LogInformation("Skipping creation of VocabularyKeyName {VocabularyKeyName} because it exists.", vocabularyKey.Name);
                 continue;
             }
 
@@ -483,17 +659,16 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
             }
             catch (InvalidOperationException ex)
             {
-                Logger.LogWarning(ex, "An error occured while trying to create vocabulary. However, it might be already created. Polling to check.");
+                Logger.LogWarning(ex, "An error occurred while trying to create vocabulary key. However, it might be already created. Polling to check.");
                 var (vocabularyKeyId, _) = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, vocabularyKey.Name, cancellationToken).ConfigureAwait(false);
                 keyId = vocabularyKeyId;
             }
             mapping.KeysMapping.Add(vocabularyKey.Name, new CustomVocabularyKeyMappingEntry
-            {
-                Name = vocabularyKey.Name,
-                Id = keyId,
-            });
+            (
+                Name: vocabularyKey.Name,
+                Id: keyId
+            ));
         }
-        fileSource.CustomVocabulariesMapping.Add(vocabulary.Name, mapping);
     }
 
     protected async Task<(Guid VocabularyKeyId, List<(Guid KeyId, string Name)> AllKeys)> PollForVocabularyKeyCreationCompletionAsync(Guid vocabularyId, string keyName, CancellationToken cancellationToken)
@@ -565,7 +740,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         if (vocabularyId != null)
         {
-            Logger.LogInformation("Skiping creation of VocabularyName {VocabularyName} because it exists.", vocabularyName);
+            Logger.LogInformation("Skipping creation of VocabularyName {VocabularyName} because it exists.", vocabularyName);
             return vocabularyId.Value;
         }
 
@@ -765,6 +940,227 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         fileSource.DataSourceSetId = resultDataSourceSetId.Value;
     }
 
+    protected async Task AddPropertyMappingAsync(FileSource fileSource, KeyMapping keyMapping, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(AddPropertyMappingAsync)).ConfigureAwait(false);
+        var (vocabularyId, vocabularyKeyId) = GetVocabularyKeyDetails(fileSource, keyMapping.Key);
+        var replacedBody = body
+            .Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
+            .Replace("{{OriginalField}}", keyMapping.Field)
+            .Replace("{{UseAsAlias}}", keyMapping.UseAsAlias.ToString().ToLowerInvariant())
+            .Replace("{{UseAsEntityCode}}", keyMapping.UseAsEntityCode.ToString().ToLowerInvariant())
+            .Replace("{{VocabularyId}}", vocabularyId.ToString())
+            .Replace("{{VocabularyKeyId}}", vocabularyKeyId.ToString());
+
+        replacedBody = ReplaceCustomVocabularyParameters(fileSource, keyMapping.Key);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+
+        _ = await CheckResponse(response);
+    }
+
+    protected async Task<HttpResponseMessage> GetDataSourceByIdAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(GetDataSourceByIdAsync)).ConfigureAwait(false);
+        var replacedBody = body.Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString());
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        return response;
+    }
+
+    protected async Task CreateAutoAnnotationAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(CreateAutoAnnotationAsync)).ConfigureAwait(false);
+        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
+            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
+            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
+            .Replace("{{EntityType}}", fileSource.EntityType);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
+        _ = await PollForVocabularyCreationCompletionAsync(fileSource.VocabularyName, cancellationToken).ConfigureAwait(false);
+    }
+
+    protected async Task CreateManualAnnotationAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(CreateManualAnnotationAsync)).ConfigureAwait(false);
+        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
+            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
+            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
+            .Replace("{{EntityType}}", fileSource.EntityType)
+            .Replace("{{KeysConfig}}", JsonSerializer.Serialize(new string[] { })); // TODO: Add Keysconfig
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
+    }
+
+    protected async Task AddEntityEdgeAsync(FileSource fileSource, EntityEdge entityEdge, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var vocabularyKeyFullName = ReplaceCustomVocabularyParameters(fileSource, entityEdge.Key);
+        var entityType = ReplaceCustomEntityTypeParameters(fileSource, entityEdge.EntityType);
+        var body = await GetRequestTemplateAsync(nameof(AddEntityCodeAsync)).ConfigureAwait(false);
+        var replacedBody = body.Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
+            .Replace("{{VocabularyKeyFullName}}", vocabularyKeyFullName)
+            .Replace("{{EntityType}}", entityType)
+            .Replace("{{EdgeType}}", entityEdge.EdgeType)
+            .Replace("{{Origin}}", entityEdge.Origin)
+            .Replace("{{EdgeDirection}}", entityEdge.Direction);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
+    }
+
+    protected async Task AddEntityCodeAsync(FileSource fileSource, EntityCode entityCode, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var vocabularyKeyFullName = ReplaceCustomVocabularyParameters(fileSource, entityCode.Key);
+        var body = await GetRequestTemplateAsync(nameof(AddEntityCodeAsync)).ConfigureAwait(false);
+        var replacedBody = body.Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
+            .Replace("{{VocabularyKeyFullName}}", vocabularyKeyFullName)
+            .Replace("{{Origin}}", fileSource.VocabularyId.ToString());
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response).ConfigureAwait(false);
+    }
+
+    protected async Task GetAnnotationIdAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var response = await GetDataSourceByIdAsync(fileSource, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content
+            .DeserializeToAnonymousTypeAsync(new
+            {
+                data = new
+                {
+                    inbound = new
+                    {
+                        dataSource = new
+                        {
+                            dataSets = new[]
+                            {
+                            new
+                            {
+                                annotationId = (int?)null
+                            },
+                            },
+                        },
+                    },
+                },
+            }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+
+        int? annotationId = result.data?.inbound?.dataSource?.dataSets?[0]?.annotationId ?? throw new InvalidOperationException("AnnotationId is not found in result.");
+
+        fileSource.AnnotationId = annotationId.Value;
+    }
+
+    protected async Task SetNameKeyAsync(FileSource fileSource, string nameKey, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(SetNameKeyAsync)).ConfigureAwait(false);
+        var replacedNameKey = ReplaceCustomVocabularyParameters(fileSource, nameKey);
+        var replacedBody = body
+            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
+            .Replace("{{VocabularyKeyFullName}}", replacedNameKey);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response);
+    }
+
+
+    protected async Task SetOriginEntityCodeKeyAsync(FileSource fileSource, string origin, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var body = await GetRequestTemplateAsync(nameof(SetOriginEntityCodeKeyAsync)).ConfigureAwait(false);
+        var replacedOrigin = ReplaceCustomVocabularyParameters(fileSource, origin);
+        var replacedBody = body
+            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
+            .Replace("{{Origin}}", replacedOrigin);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        _ = await CheckResponse(response);
+    }
+
+    private static (Guid VocabularyId, Guid VocabularyKeyId) GetVocabularyKeyDetails(FileSource fileSource, string fullVocabularyKey)
+    {
+        var indexOfKey = fullVocabularyKey.IndexOf("}}.");
+        if (indexOfKey == -1)
+        {
+            var vocabulary = fullVocabularyKey[..(indexOfKey + 2)];
+            var vocabularyKeyName = fullVocabularyKey[(indexOfKey + 3)..];
+            var vocabularyMapping = fileSource.CustomVocabulariesMapping
+                .Where(currentMapping => $"{{{{Vocabulary[{currentMapping.Key}].Name}}}}" == vocabulary)
+                .Select(currentMapping => currentMapping.Value)
+                .SingleOrDefault();
+
+            if (vocabularyMapping != null)
+            {
+                if (vocabularyMapping.KeysMapping.TryGetValue(vocabularyKeyName, out var keyMapping))
+                {
+                    return (vocabularyMapping.Id, keyMapping.Id);
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Cannot resolve vocabulary id details from key '{fullVocabularyKey}'.");
+    }
+
     private void CreateFileSources(string testId)
     {
         IEnumerable<string> files = Array.Empty<string>();
@@ -854,85 +1250,6 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         return TestFileHelper.GetTestFileStream(fileSource.UploadFilePath);
     }
 
-    protected async Task<HttpResponseMessage> GetDataSourceByIdAsync(FileSource fileSource, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(GetDataSourceByIdAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString());
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        return response;
-    }
-
-    protected async Task CreateAutoAnnotationAsync(FileSource fileSource, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(CreateAutoAnnotationAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
-            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
-            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        _ = await CheckResponse(response).ConfigureAwait(false); 
-        _ = await PollForVocabularyCreationCompletionAsync(fileSource.VocabularyName, cancellationToken).ConfigureAwait(false);
-    }
-
-    protected async Task CreateManualAnnotationAsync(FileSource fileSource, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(CreateManualAnnotationAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
-            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
-            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType)
-            .Replace("{{KeysConfig}}", JsonSerializer.Serialize(new string[] { })); // TODO: Add Keysconfig
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        _ = await CheckResponse(response).ConfigureAwait(false);
-    }
-
-    protected async Task AddEntityCodeAsync(FileSource fileSource, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(AddEntityCodeAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
-            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-        _ = await CheckResponse(response).ConfigureAwait(false);
-    }
-
     private static async Task<string> CheckResponse(HttpResponseMessage response)
     {
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -954,52 +1271,6 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         }
     }
 
-    protected async Task GetAnnotationIdAsync(FileSource fileSource, CancellationToken cancellationToken)
-    {
-        var response = await GetDataSourceByIdAsync(fileSource, cancellationToken).ConfigureAwait(false);
-        var result = await response.Content
-            .DeserializeToAnonymousTypeAsync(new
-            {
-                data = new
-                {
-                    inbound = new
-                    {
-                        dataSource = new
-                        {
-                            dataSets = new[]
-                            {
-                            new
-                            {
-                                annotationId = (int?)null
-                            },
-                            },
-                        },
-                    },
-                },
-            }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
-
-        int? annotationId = result.data?.inbound?.dataSource?.dataSets?[0]?.annotationId ?? throw new InvalidOperationException("AnnotationId is not found in result.");
-
-        fileSource.AnnotationId = annotationId.Value;
-    }
-
-    protected async Task SetOriginEntityCodeKeyAsync(FileSource fileSource, string origin, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(SetOriginEntityCodeKeyAsync)).ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{Origin}}", origin);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
-    }
-
     protected class CustomMappingOptions
     {
         public bool ShouldAutoMap { get; set; } = true;
@@ -1016,25 +1287,44 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         public IEnumerable<KeyMapping> KeyMappings { get; set; } = Enumerable.Empty<KeyMapping>();
 
+        public IEnumerable<EntityCode> EntityCodes { get; set; } = Enumerable.Empty<EntityCode>();
+
+        public IEnumerable<EntityEdge> EntityEdges { get; set; } = Enumerable.Empty<EntityEdge>();
+
         [JsonIgnore]
-        public IEnumerable<CustomMappingRequest> MappingRequests { get; set; } = Enumerable.Empty<CustomMappingRequest>();
+        public IEnumerable<CustomRequest> CustomRequests { get; set; } = Enumerable.Empty<CustomRequest>();
     }
+
+    protected record EntityCode(string Key, string Origin, bool UseAsEntityCode, bool UseAsSourceCode);
+
+    protected record EntityEdge(string Key, string EdgeType, string Origin, string EntityType, string Direction);
 
     protected record KeyMapping(string Field, string Key, bool UseAsEntityCode, bool UseAsAlias);
 
-    protected record CustomMappingRequest(string Name, string Request, List<RequestOutputVariable> OutputVariables);
+    protected record CustomRequest(string Name, string Request, List<RequestOutputVariable> OutputVariables);
 
     protected record RequestOutputVariable(string Name, string Path, bool IsArray = false);
+
+    protected record RuntimeSettings(List<string> EnvironmentVariables, Dictionary<string, string> OutputVariables);
 
     protected record CustomVocabulary(string Name)
     {
         public List<CustomVocabularyKey> Keys { get; init; } = new List<CustomVocabularyKey>();
     }
 
-    protected record CustomVocabularyKey(string Name);
+    protected record CustomVocabularyKey(string Name, string DataType = "Text", string Storage = "Untyped", string GroupName = "Metadata");
 
     protected class GraphQLError
     {
         public string? Message { get; set; }
     }
+
+    private record CreateVocabularyKeyModel(
+        Guid VocabularyId,
+        string DisplayName,
+        string Name,
+        string DataType,
+        string Storage,
+        bool IsVisible,
+        string GroupName);
 }

@@ -1,0 +1,17 @@
+{
+  "operationName": "addPropertyMappingToCluedMappingConfiguration",
+  "variables": {
+    "dataSetId": "{{DataSetId}}",
+    "propertyMappingConfiguration": {
+      "originalField": "{{OriginalField}}",
+      "useAsAlias": {{UseAsAlias}},
+      "useAsEntityCode": {{UseAsEntityCode}},
+      "vocabularyKeyConfiguration": {
+        "vocabularyId": "{{VocabularyId}}",
+        "new": false,
+        "vocabularyKeyId": "{{VocabularyKeyId}}"
+      }
+    }
+  },
+  "query": "mutation addPropertyMappingToCluedMappingConfiguration($dataSetId: ID!, $propertyMappingConfiguration: InputPropertyMappingConfiguration, $extra: Boolean) {\n  management {\n    addPropertyMappingToCluedMappingConfiguration(\n      dataSetId: $dataSetId\n      propertyMappingConfiguration: $propertyMappingConfiguration\n      extra: $extra\n    )\n    __typename\n  }\n}\n"
+}
