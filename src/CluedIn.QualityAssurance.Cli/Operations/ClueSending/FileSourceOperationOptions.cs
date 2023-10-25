@@ -7,4 +7,6 @@ internal abstract class FileSourceOperationOptions : ClueSendingOperationOptions
     public string InputDirectoryPath { get; set; }
 
     public int DelayAfterVocabularyKeyCreationInMilliseconds { get; set; }
+
+    public bool CreateVocabularyKeyIndividually { get; set; }
 }

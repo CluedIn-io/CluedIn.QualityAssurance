@@ -581,11 +581,20 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         var keys = await GetVocabularyKeysFromVocabularyIdAsync(vocabularyId, cancellationToken).ConfigureAwait(false);
 
-        await BatchCreateVocabularyKeys(vocabulary, vocabularyId, mapping, keys, cancellationToken).ConfigureAwait(false);
+        if (Options.CreateVocabularyKeyIndividually)
+        {
+            Logger.LogInformation("Individually creating vocabulary keys.");
+            await CreateVocabularyKeysIndividuallyAsync(vocabulary, vocabularyId, mapping, keys, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            Logger.LogInformation("Batch creating vocabulary keys.");
+            await BatchCreateVocabularyKeysAsync(vocabulary, vocabularyId, mapping, keys, cancellationToken).ConfigureAwait(false);
+        }
         fileSource.CustomVocabulariesMapping.Add(vocabulary.Name, mapping);
     }
 
-    private async Task BatchCreateVocabularyKeys(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> existingKeys, CancellationToken cancellationToken)
+    private async Task BatchCreateVocabularyKeysAsync(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> existingKeys, CancellationToken cancellationToken)
     {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = new Uri(serverUris.WebApiUri, "api/vocabs/keys");
@@ -660,7 +669,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         await Task.Delay(TimeSpan.FromMilliseconds(Options.DelayAfterVocabularyKeyCreationInMilliseconds), cancellationToken);
     }
 
-    private async Task CreateVocabularyKeys(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> keys, CancellationToken cancellationToken)
+    private async Task CreateVocabularyKeysIndividuallyAsync(CustomVocabulary vocabulary, Guid vocabularyId, CustomVocabularyMappingEntry mapping, List<(Guid KeyId, string Name)> keys, CancellationToken cancellationToken)
     {
         foreach (var vocabularyKey in vocabulary.Keys)
         {
