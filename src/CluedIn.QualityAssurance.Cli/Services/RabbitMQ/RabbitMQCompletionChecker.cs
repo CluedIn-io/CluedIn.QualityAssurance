@@ -18,7 +18,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     {
         @".*Messages.*\.(.*Command).*",
         @"clue_(datasource)_process_(.*)",
-        @"(Stream)Subscriber-(ingestion|deadLetter|connector)-(.*)",
+        @"(Stream)Subscriber-(ingestion|connector)-(.*)",
     };
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
@@ -29,6 +29,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     {
         @"(DeadLetterCommands)",
         @"(EasyNetQ_Default_Error_Queue)",
+        @"(Stream)Subscriber-(deadLetter)-(.*)",
     };
 
     private List<QueueChecker> AllQueueCheckers { get; set; } = new ();
