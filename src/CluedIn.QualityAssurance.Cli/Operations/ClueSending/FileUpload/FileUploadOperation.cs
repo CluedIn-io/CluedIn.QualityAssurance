@@ -7,6 +7,9 @@ using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using Microsoft.Extensions.Logging;
+
+using RestSharp;
+
 using SystemEnvironment = System.Environment;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
@@ -103,7 +106,7 @@ internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
         fileSource.FileId = fileId;
         fileSource.DataSourceId = dataSourceId;
 
-        await UploadFileChunkAsync(stream, fileSource, cancellationToken).ConfigureAwait(false);
+        await UploadFileChunkUsingRestSharpAsync(stream, fileSource, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task UploadFileChunkAsync(Stream stream, FileSource fileSource, CancellationToken cancellationToken)
@@ -160,6 +163,36 @@ internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
             }
 
             var response = await request.GetResponseAsync().ConfigureAwait(false);
+            from = to;
+        }
+    }
+
+    private async Task UploadFileChunkUsingRestSharpAsync(Stream stream, FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+
+        long from = 0;
+        var length = stream.Length;
+        const int ChunkSize = 102400000;
+        var fileName = Path.GetFileName(fileSource.UploadFilePath);
+        while (from < length)
+        {
+            var to = Math.Min(from + ChunkSize, length);
+            var fileBuffer = new byte[to - from];
+            await stream.ReadAsync(fileBuffer, 0, fileBuffer.Length);
+
+            // We are using WebRequest here because the HttpWebRequest does not allow setting Content-Range in request header
+            var client = new RestClient(serverUris.UploadApiUri);
+            var request = new RestRequest("resume-upload", Method.Post);
+            request.AddHeader("Content-Range", $"bytes={from}-{to}/{length}");
+            request.AddHeader("Authorization", $"Bearer {Organization.AccessToken}");
+            request.AddHeader("x-file-id", fileSource.FileId.ToString());
+            request.AddHeader("x-dataSource-Id", fileSource.DataSourceId.ToString());
+            request.AddHeader("Content-Type", "multipart/form-data");
+            request.AlwaysMultipartFormData = true;
+            request.AddFile("chunk", fileBuffer, fileName, "application/octet-stream", new FileParameterOptions(){});
+            request.AddParameter("fileId", fileSource.FileId.ToString());
+            await client.ExecuteAsync(request);
             from = to;
         }
     }
