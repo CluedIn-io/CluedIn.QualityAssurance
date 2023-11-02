@@ -55,7 +55,7 @@ internal class LocalEnvironment : IEnvironment
         return Task.FromResult(availableMemory);
     }
 
-    public Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
+    public Task<RabbitMQConnectionInfo> GetRabbitMQConnectionInfoAsync(CancellationToken cancellationToken)
     {
         var result = new RabbitMQConnectionInfo
         {
@@ -69,11 +69,11 @@ internal class LocalEnvironment : IEnvironment
     public Task<Neo4jConnectionInfo> GetNeo4jConnectionInfoAsync(CancellationToken cancellationToken)
     {
         var result = new Neo4jConnectionInfo
-        {
-            BoltUri = new Uri(Options.Value.Neo4jBoltUri),
-            Password = Options.Value.Neo4jUserName,
-            UserName = Options.Value.Neo4jUserPassword,
-        };
+        (
+            BoltUri: new Uri(Options.Value.Neo4jBoltUri),
+            UserName: Options.Value.Neo4jUserName,
+            Password: Options.Value.Neo4jUserPassword
+        );
         return Task.FromResult(result);
     }
 
@@ -93,7 +93,7 @@ internal class LocalEnvironment : IEnvironment
         return Task.FromResult(Options.Value.NewAccountAccessKey);
     }
 
-    private Uri EnsureTrailingSlash(Uri uri)
+    private static Uri EnsureTrailingSlash(Uri uri)
     {
         if (!uri.AbsoluteUri.EndsWith("/"))
         {
@@ -106,23 +106,23 @@ internal class LocalEnvironment : IEnvironment
     public Task<SqlServerConnectionInfo> GetSqlServerConnectionInfoAsync(CancellationToken cancellationToken)
     {
         var result = new SqlServerConnectionInfo
-        {
-            Host = Options.Value.SqlServerHost,
-            Port = Options.Value.SqlServerPort,
-            UserName = Options.Value.SqlServerUserName,
-            Password = Options.Value.SqlServerUserPassword,
-        };
+        (
+            Host: Options.Value.SqlServerHost,
+            Port: Options.Value.SqlServerPort,
+            UserName: Options.Value.SqlServerUserName,
+            Password: Options.Value.SqlServerUserPassword
+        );
         return Task.FromResult(result);
     }
 
     public Task<ElasticSearchConnectionInfo> GetElasticSearchConnectionInfoAsync(CancellationToken cancellationToken)
     {
         var result = new ElasticSearchConnectionInfo
-        {
-            ServerUri = new Uri(Options.Value.ElasticSearchUri),
-            Password = Options.Value.ElasticSearchUserName,
-            UserName = Options.Value.ElasticSearchUserPassword,
-        };
+        (
+            ServerUri: new Uri(Options.Value.ElasticSearchUri),
+            UserName: Options.Value.ElasticSearchUserName,
+            Password: Options.Value.ElasticSearchUserPassword
+        );
         return Task.FromResult(result);
     }
 }

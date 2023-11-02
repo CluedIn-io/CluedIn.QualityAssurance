@@ -16,7 +16,8 @@
         "keyPrefix": "{{VocabularyName}}",
         "vocabularyName": "{{VocabularyName}}",
         "vocabularyId": "{{VocabularyId}}"
-      }
+      },
+      "keysConfig": {{KeysConfig}}
     },
     "isDynamicVocab": true
   },

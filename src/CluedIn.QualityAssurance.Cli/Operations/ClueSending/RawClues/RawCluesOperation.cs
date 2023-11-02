@@ -15,10 +15,10 @@ internal class RawCluesOperation : RawCluesOperation<RawCluesOptions>
         ILogger<RawCluesOperation> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMqCompletionChecker, postOperationActions, httpClientFactory)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
     {
     }
 }
@@ -30,10 +30,10 @@ internal abstract class RawCluesOperation<TOptions> : ClueSendingOperation<TOpti
         ILogger<RawCluesOperation<TOptions>> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMqCompletionChecker, postOperationActions, httpClientFactory)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

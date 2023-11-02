@@ -24,34 +24,16 @@ internal class FileSource
 
     public string EntityType { get; set; }
 
-    //public KeyValuePair<string, string> CustomEntityTypeMapping { get; set; }
-
     public Dictionary<string, string> CustomEntityTypesMapping { get; set; } = new Dictionary<string, string>();
 
     public bool IsExternalUploadFilePath { get; set; }
 
-
-    public string EntityTypeRoute
-    {
-        get
-        {
-            return EntityType.ToLowerInvariant();
-        }
-    }
+    public string EntityTypeRoute => EntityType.ToLowerInvariant();
 }
 
-public class CustomVocabularyMappingEntry
+public record CustomVocabularyMappingEntry(string Name, Guid Id)
 {
-    public string Name { get; set; }
-
-    public Guid Id { get; set; }
-
-    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; set; } = new Dictionary<string, CustomVocabularyKeyMappingEntry>();
+    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; init; } = new Dictionary<string, CustomVocabularyKeyMappingEntry>();
 }
 
-public class CustomVocabularyKeyMappingEntry
-{
-    public string Name { get; set; }
-
-    public Guid Id { get; set; }
-}
+public record CustomVocabularyKeyMappingEntry(string Name, Guid Id);

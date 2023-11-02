@@ -22,7 +22,7 @@ internal class RabbitMQService
 
     private Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
     {
-        return Environment.GetRabbitMqConnectionInfoAsync(cancellationToken);
+        return Environment.GetRabbitMQConnectionInfoAsync(cancellationToken);
     }
 
     public async Task PurgeQueueAsync(string queueName, CancellationToken cancellationToken)
@@ -235,6 +235,11 @@ internal class RabbitMQService
                 }
             }).ConfigureAwait(false);
 
+            if (result == null)
+            {
+                throw new InvalidOperationException("Failed to get result from rabbit mq api call.");
+            }
+
             return result.Select(current =>
             {
                 // message_stats will be null when there is no activity
@@ -261,7 +266,7 @@ internal class RabbitMQService
                 uint messageCount = current?.messages ?? 0;
                 double messageCountRate = current?.messages_details?.rate ?? 0.0f;
                 return new QueueInfo(
-                    QueueName: current.name,
+                    QueueName: current!.name,
                     Acknowledged: new(ackCount, ackRate),
                     Delivered: new(deliverCount, deliverRate),
                     DeliveredOrGet: new(deliverGetCount, deliverGetRate),

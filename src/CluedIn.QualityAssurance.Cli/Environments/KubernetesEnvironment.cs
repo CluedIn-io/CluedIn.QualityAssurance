@@ -14,7 +14,7 @@ namespace CluedIn.QualityAssurance.Cli.Environments;
 internal class KubernetesEnvironment : IEnvironment
 {
     private static readonly TimeSpan PortForwardConnectionAliveInterval = TimeSpan.FromMinutes(30);
-    private static readonly Dictionary<string, ServiceSettings> Settings = new Dictionary<string, ServiceSettings>
+    private static readonly Dictionary<string, ServiceSettings> Settings = new()
     {
         [nameof(Neo4jConnectionInfo)] = new ServiceSettings("neo4j", "cluedin-neo4j", "cluedin-neo4j-secrets", "neo4j-password", 7687),
         [nameof(RabbitMQConnectionInfo)] = new ServiceSettings("cluedin", "cluedin-rabbitmq", "cluedin-rabbitmq", "rabbitmq-password", 15672),
@@ -23,13 +23,6 @@ internal class KubernetesEnvironment : IEnvironment
     };
 
     private Dictionary<string, ConnectionInfo> Connections { get; set; } = new Dictionary<string, ConnectionInfo>();
-
-    private class ConnectionInfo
-    {
-        public Process Process { get; set; }
-        public object Info { get; set; }
-    }
-    private record ServiceSettings (string UserName, string ServiceName, string SecretName, string PasswordField, int Port);
 
     public KubernetesEnvironment(ILogger<KubernetesEnvironment> logger, IOptions<IKubernetesEnvironmentOptions> options)
     {
@@ -61,10 +54,10 @@ internal class KubernetesEnvironment : IEnvironment
 
         var connectionInfo = createConnectionInfoFunc(settings.UserName, password, result);
         Connections.Add(name, new ConnectionInfo
-        {
-            Info= connectionInfo,
-            Process = result.Process,
-        });
+        (
+            Process: result.Process,
+            Info: connectionInfo
+        ));
         return connectionInfo;
     }
 
@@ -87,18 +80,16 @@ internal class KubernetesEnvironment : IEnvironment
     private bool TryGetConnectionInfo<T>(string name, [NotNullWhen(true)] out T? connectionInfo, out ServiceSettings settings)
         where T : class
     {
-        if (!Settings.TryGetValue(name, out settings))
+        if (!Settings.TryGetValue(name, out var foundSetting))
         {
             throw new NotSupportedException($"Invalid setting name '{name}'.");
         }
 
+        settings = foundSetting;
+
         if (Connections.TryGetValue(name, out var foundInfo))
         {
-            var found = foundInfo.Info as T;
-            if (found == null)
-            {
-                throw new InvalidOperationException($"Found null info for connection with name '{name}'.");
-            }
+            var found = foundInfo.Info as T ?? throw new InvalidOperationException($"Found null info for connection with name '{name}'.");
             connectionInfo = found;
             return true;
         }
@@ -112,7 +103,7 @@ internal class KubernetesEnvironment : IEnvironment
         Logger.LogInformation("Setting up kubernetes environment for testing.");
         Connections.Clear();
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(RabbitMQConnectionInfo),
             (userName, password, portForwardResult) => new RabbitMQConnectionInfo
             {
@@ -122,42 +113,42 @@ internal class KubernetesEnvironment : IEnvironment
             },
             cancellationToken);
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(Neo4jConnectionInfo),
             (userName, password, portForwardResult) => new Neo4jConnectionInfo
-            {
-                BoltUri = new Uri($"bolt://{portForwardResult.Uri}"),
-                Password = password,
-                UserName = userName,
-            },
+            (
+                BoltUri: new Uri($"bolt://{portForwardResult.Uri}"),
+                UserName: userName,
+                Password: password
+            ),
             cancellationToken);
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(ElasticSearchConnectionInfo),
             (userName, password, portForwardResult) => new ElasticSearchConnectionInfo
-            {
-                ServerUri = new Uri($"http://{portForwardResult.Uri}"),
-                Password = password,
-                UserName = userName,
-            },
+            (
+                ServerUri: new Uri($"http://{portForwardResult.Uri}"),
+                UserName: userName,
+                Password: password
+            ),
             cancellationToken);
 
 
-        _ = await this.GetOrCreateConnectionInfoAsync(
+        _ = await GetOrCreateConnectionInfoAsync(
             nameof(SqlServerConnectionInfo),
             (userName, password, portForwardResult) => {
                 var temp = new Uri($"tcp://{portForwardResult.Uri}");
                 return new SqlServerConnectionInfo
-                {
-                    Host = temp.Host,
-                    Port = temp.Port,
-                    Password = password,
-                    UserName = userName,
-                };
+                (
+                    Host: temp.Host,
+                    Port: temp.Port,
+                    UserName: userName,
+                    Password: password
+                );
             },
             cancellationToken);
 
-        NewAccountAccessKey = await this.GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
+        NewAccountAccessKey = await GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
         SetupTime = DateTimeOffset.UtcNow;
     }
 
@@ -271,7 +262,7 @@ internal class KubernetesEnvironment : IEnvironment
         return Task.FromResult(NewAccountAccessKey);
     }
 
-    private Uri EnsureTrailingSlash(Uri uri)
+    private static Uri EnsureTrailingSlash(Uri uri)
     {
         if (!uri.AbsoluteUri.EndsWith("/"))
         {
@@ -281,7 +272,7 @@ internal class KubernetesEnvironment : IEnvironment
         return uri;
     }
 
-    public Task<RabbitMQConnectionInfo> GetRabbitMqConnectionInfoAsync(CancellationToken cancellationToken)
+    public Task<RabbitMQConnectionInfo> GetRabbitMQConnectionInfoAsync(CancellationToken cancellationToken)
     {
         return GetConnectionInfoAsync<RabbitMQConnectionInfo>(nameof(RabbitMQConnectionInfo), cancellationToken);
     }
@@ -300,4 +291,8 @@ internal class KubernetesEnvironment : IEnvironment
     {
         return GetConnectionInfoAsync<ElasticSearchConnectionInfo>(nameof(ElasticSearchConnectionInfo), cancellationToken);
     }
+
+    private record ConnectionInfo(Process Process, object Info);
+
+    private record ServiceSettings(string UserName, string ServiceName, string SecretName, string PasswordField, int Port);
 }

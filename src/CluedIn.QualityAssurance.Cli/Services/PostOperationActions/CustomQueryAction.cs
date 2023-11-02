@@ -21,7 +21,7 @@ internal class CustomQueryAction : IPostOperationAction
     private ILogger<CustomQueryAction> Logger { get; }
     private IEnvironment Environment { get; }
     private IFileSourceOperationOptions Options { get; }
-    private CustomOutputOptions CustomOptions { get; set; }
+    private CustomOutputOptions? CustomOptions { get; set; }
 
     public async Task ExecuteAsync(SingleIterationOperationResult result, CancellationToken cancellationToken)
     {
@@ -72,8 +72,7 @@ internal class CustomQueryAction : IPostOperationAction
 
     private async Task<CustomOutputOptions> GetTestResultCustomizationsAsync(string testFilePath)
     {
-        var customizationFileStream = TestFileHelper.GetCustomizationFileStream(testFilePath);
-        if (customizationFileStream != null)
+        if (TestFileHelper.TryGetCustomizationFileStream(testFilePath, out var customizationFileStream))
         {
             using var reader = new StreamReader(customizationFileStream);
             var json = await reader.ReadToEndAsync();

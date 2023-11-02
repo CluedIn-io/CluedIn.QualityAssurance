@@ -1,0 +1,164 @@
+{
+  "customMapping": {
+    "shouldAutoMap": false,
+    "entityType": "MyNode",
+    "vocabularyName": "MyNode",
+    "origin": "nodeid",
+    "originEntityCodeKey": "{{VocabularyKey[MyNode.id].FullName}}",
+    "nameKey": "{{VocabularyKey[MyNode.name].FullName}}",
+    "keyMappings": [{
+        "field": "id",
+        "key": "{{VocabularyKey[MyNode.id].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }, {
+        "field": "parentId",
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }, {
+        "field": "name",
+        "key": "{{VocabularyKey[MyNode.name].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }
+    ],
+    "entityCodes": [],
+    "edges": [{
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "entityType": "{{EntityType[MyNode]}}",
+        "edgeType": "ParentOf",
+        "origin": "nodeid",
+        "direction": "outgoing"
+      }
+    ],
+    "requests": [{
+        "name": "Create Export Target",
+        "request": {
+          "operationName": "createConnection",
+          "variables": {
+            "connectorId": "838e4ea2-80e0-4b60-b1d1-f052bfcd0caf",
+            "authInfo": {
+              "host": "sqlserver",
+              "databaseName": "DataStore.Db.Training",
+              "username": "{{Env[MY_EXPORT_TARGET_USERNAME]}}",
+              "password": "{{Env[MY_EXPORT_TARGET_PASSWORD]}}",
+              "schema": ""
+            }
+          },
+          "query": "mutation createConnection($connectorId: ID, $authInfo: JSON) {\n  inbound {\n    createConnection(connectorId: $connectorId, authInfo: $authInfo) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
+        },
+        "outputs": [{
+            "name": "ConnectorProviderDefinitionId",
+            "path": "$.data.inbound.createConnection.id"
+          }
+        ]
+      }, {
+        "name": "Create Stream",
+        "request": {
+          "operationName": "createStream",
+          "variables": {
+            "stream": {
+              "name": "mystream"
+            }
+          },
+          "query": "mutation createStream($stream: InputCreateStream!) {\n  consume {\n    id\n    createStream(stream: $stream) {\n      ...Stream\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment Stream on Stream {\n  id\n  name\n  status\n  createdBy\n  modifiedBy\n  type\n  modifiedAt\n  createdAt\n  ownedBy\n  condition\n  rules\n  numberOfRecords\n  rulesApplied\n  containerName\n  mode\n  exportOutgoingEdges\n  exportIncomingEdges\n  author {\n    id\n    username\n    __typename\n  }\n  __typename\n}\n"
+        },
+        "outputs": [{
+            "name": "MyStreamId",
+            "path": "$.data.consume.createStream.id"
+          }
+        ]
+      }, {
+        "name": "Update Stream",
+        "request": {
+          "operationName": "saveStream",
+          "variables": {
+            "stream": {
+              "id": "{{Var[MyStreamId]}}",
+              "name": "mystream",
+              "description": null,
+              "ownedBy": "{{UserId}}",
+              "modifiedBy": null,
+              "createdBy": "{{UserId}}",
+              "condition": {
+                "objectTypeId": "00000000-0000-0000-0000-000000000000",
+                "condition": "AND",
+                "field": null,
+                "id": "298cdc3b-5b8d-4551-88d5-0e364dfe9ebc",
+                "operator": "00000000-0000-0000-0000-000000000000",
+                "rules": [{
+                    "condition": "AND",
+                    "field": "EntityType",
+                    "objectTypeId": "3be85371-cbe0-4180-8820-73e6e37a6c32",
+                    "operator": "0bafc522-8011-43ba-978a-babe222ba466",
+                    "value": ["/{{EntityType[MyNode]}}"],
+                    "type": "string"
+                  }
+                ],
+                "type": null,
+                "value": null
+              },
+              "rules": []
+            }
+          },
+          "query": "mutation saveStream($stream: InputStream!) {\n  consume {\n    id\n    saveStream(stream: $stream) {\n      ...Stream\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment Stream on Stream {\n  id\n  name\n  status\n  createdBy\n  modifiedBy\n  type\n  modifiedAt\n  createdAt\n  ownedBy\n  condition\n  rules\n  numberOfRecords\n  rulesApplied\n  containerName\n  mode\n  exportOutgoingEdges\n  exportIncomingEdges\n  author {\n    id\n    username\n    __typename\n  }\n  __typename\n}\n"
+        }
+      }, {
+        "name": "Setup Connector Stream",
+        "request": {
+          "operationName": "setupConnectorStream",
+          "variables": {
+            "streamId": "{{Var[MyStreamId]}}",
+            "exportConfiguration": {
+              "connectorProviderDefinitionId": "{{Var[ConnectorProviderDefinitionId]}}",
+              "containerName": "QA{{Vocabulary[MyNode].Name}}",
+              "mode": "Sync",
+              "exportOutgoingEdges": true,
+              "exportIncomingEdges": false,
+              "dataTypes": [{
+                  "key": "{{VocabularyKey[MyNode.id].FullName}}",
+                  "type": "vocabkey"
+                }, {
+                  "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+                  "type": "vocabkey"
+                }, {
+                  "key": "{{VocabularyKey[MyNode.name].FullName}}",
+                  "type": "vocabkey"
+                }
+              ]
+            }
+          },
+          "query": "mutation setupConnectorStream($streamId: ID!, $exportConfiguration: InputExportConfiguration) {\n  consume {\n    id\n    setupConnectorStream(\n      streamId: $streamId\n      exportConfiguration: $exportConfiguration\n    ) {\n      id\n      containerName\n      mode\n      exportOutgoingEdges\n      exportIncomingEdges\n      connector {\n        id\n        name\n        active\n        accountDisplay\n        connector {\n          id\n          name\n          icon\n          __typename\n        }\n        __typename\n      }\n      mappingConfiguration\n      __typename\n    }\n    __typename\n  }\n}\n"
+        }
+
+      }, {
+        "name": "Start Stream",
+        "request": {
+          "operationName": "startStream",
+          "variables": {
+            "streamId": "{{Var[MyStreamId]}}"
+          },
+          "query": "mutation startStream($streamId: ID!) {\n  consume {\n    id\n    startStream(streamId: $streamId) {\n      ...Stream\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment Stream on Stream {\n  id\n  name\n  status\n  createdBy\n  modifiedBy\n  type\n  modifiedAt\n  createdAt\n  ownedBy\n  condition\n  rules\n  numberOfRecords\n  rulesApplied\n  containerName\n  mode\n  exportOutgoingEdges\n  exportIncomingEdges\n  author {\n    id\n    username\n    __typename\n  }\n  __typename\n}\n"
+        }
+      }
+    ]
+  },
+  "customResult": {
+    "testResultValues": [{
+        "name": "TotalEntities",
+        "source": "Neo4j",
+        "type": "SingleValue",
+        "query": "MATCH (n:Entity:`{{ClientId}}`) WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(n) AS Total;"
+      }, {
+        "name": "TotalEdges",
+        "source": "Neo4j",
+        "type": "SingleValue",
+        "query": "MATCH (n:`Entity`:`{{ClientId}}`)-[r:`/ParentOf`]->() WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(r) AS Total;"
+      }
+    ]
+  }
+}

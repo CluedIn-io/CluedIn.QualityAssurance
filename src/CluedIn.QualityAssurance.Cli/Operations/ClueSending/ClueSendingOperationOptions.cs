@@ -6,7 +6,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
 [LocalEnvironmentValid]
 [KubernetesEnvironmentValid]
-internal abstract class ClueSendingOperationOptionsBase : IClueSendingOperationOptions, ILocalEnvironmentOptions, IKubernetesEnvironmentOptions
+internal abstract class ClueSendingOperationOptions : IClueSendingOperationOptions, ILocalEnvironmentOptions, IKubernetesEnvironmentOptions
 {
     #region CluedInServer
     public string AuthApiUrl { get; set; }

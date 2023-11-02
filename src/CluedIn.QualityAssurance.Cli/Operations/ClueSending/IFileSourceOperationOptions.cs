@@ -12,4 +12,7 @@ internal interface IFileSourceOperationOptions : IClueSendingOperationOptions
 
     [Option("milliseconds-after-vocabulary-key-creation", Default = 300, Required = false, HelpText = "Delay after vocabulary key creation, in milliseconds.")]
     int DelayAfterVocabularyKeyCreationInMilliseconds { get; set; }
+
+    [Option("create-vocabulary-keys-individually", Default = false, Required = false, HelpText = "Whether to create vocabulary keys individually.")]
+    bool CreateVocabularyKeyIndividually { get; set; }
 }

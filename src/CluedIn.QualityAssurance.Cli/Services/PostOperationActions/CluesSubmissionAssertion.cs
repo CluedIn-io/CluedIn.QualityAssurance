@@ -137,18 +137,18 @@ internal class CluesSubmissionAssertion : IPostOperationAction
 
     private class FailedClue
     {
-        public string FileName { get; set; }
+        public string FileName { get; init; }
 
-        public bool IsMissing { get; set; }
+        public bool IsMissing { get; init; }
 
-        public bool IsMultiple { get; set; }
+        public bool IsMultiple { get; init; }
 
-        public bool IsUnprocessed { get; set; }
+        public bool IsUnprocessed { get; init; }
 
-        public bool IsMissingProperties { get; set; }
+        public bool IsMissingProperties { get; init; }
 
-        public string EntityId { get; set; }
+        public string EntityId { get; init; }
 
-        public string? OriginCode { get; set; }
+        public string? OriginCode { get; init; }
     }
 }

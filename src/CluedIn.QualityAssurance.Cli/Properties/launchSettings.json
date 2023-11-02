@@ -42,15 +42,20 @@
     },
     "Directory File Upload Local": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt"
+    },
+    "Directory File Upload Kubernetes": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --kubeconfig-path \"D:\\temp\\config.backup\" --server-url \"https://app.platform-staging.cluedin-test.online\" --milliseconds-after-vocabulary-key-creation 837 --kubernetes --context-name \"platform-staging-aks\" --namespace \"cluedin\" -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt"
     },
     "Directory Ingestion Endpoint Local": {
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --use-short-test-id"
+    },
     },
     "Show Help": {
       "commandName": "Project",
       "commandLineArgs": ""
     }
   }
-}k
+}

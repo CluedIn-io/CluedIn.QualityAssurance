@@ -12,12 +12,13 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private ILogger<RabbitMQCompletionChecker> Logger { get; }
 
-    private RabbitMQService RabbitMqService { get; }
+    private RabbitMQService RabbitMQService { get; }
 
     private List<string> ObservedQueueRegexes { get; } = new ()
     {
         @".*Messages.*\.(.*Command).*",
         @"clue_(datasource)_process_(.*)",
+        @"(Stream)Subscriber-(ingestion|connector)-(.*)",
     };
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
@@ -28,6 +29,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     {
         @"(DeadLetterCommands)",
         @"(EasyNetQ_Default_Error_Queue)",
+        @"(Stream)Subscriber-(deadLetter)-(.*)",
     };
 
     private List<QueueChecker> AllQueueCheckers { get; set; } = new ();
@@ -38,9 +40,9 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private Dictionary<string, QueueHistory> ForceIncludeQueues { get; set; } = new ();
 
-    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, RabbitMQService rabbitMqService)
+    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, RabbitMQService rabbitMQService)
     {
-        RabbitMqService = rabbitMqService ?? throw new ArgumentNullException(nameof(rabbitMqService));
+        RabbitMQService = rabbitMQService ?? throw new ArgumentNullException(nameof(rabbitMQService));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -168,7 +170,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private async Task<List<(QueueInfo CurrentQueueInfo, bool IsComplete, QueueInfo CompletedInfo, List<QueueInfo> HistoricalQueueInfo)>> PopulateQueueInformation(CancellationToken cancellationToken)
     {
-        var allQueueInfo = await RabbitMqService.GetRabbitAllQueueInfoAsync(cancellationToken).ConfigureAwait(false);
+        var allQueueInfo = await RabbitMQService.GetRabbitAllQueueInfoAsync(cancellationToken).ConfigureAwait(false);
 
         var results = new List<(QueueInfo CurrentQueueInfo, bool IsComplete, QueueInfo CompletedInfo, List<QueueInfo> HistoricalQueueInfo)>();
         foreach (var currentQueueInfo in allQueueInfo)

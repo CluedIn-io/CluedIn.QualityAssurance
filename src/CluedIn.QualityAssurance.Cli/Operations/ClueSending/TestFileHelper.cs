@@ -1,4 +1,6 @@
-﻿using CluedIn.QualityAssurance.Cli.Models.Operations;
+﻿using System.Diagnostics.CodeAnalysis;
+
+using CluedIn.QualityAssurance.Cli.Models.Operations;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -38,14 +40,15 @@ internal static class TestFileHelper
         return path + ".customization.json";
     }
 
-    public static Stream GetCustomizationFileStream(string path)
+    public static bool TryGetCustomizationFileStream(string path, [NotNullWhen(true)] out Stream? stream)
     {
         if (TestFileHelper.IsExternalTestFile(path))
         {
             var customizationFilePath = GetCustomizationFilePath(path);
             if (File.Exists(customizationFilePath))
             {
-                return File.OpenRead(customizationFilePath);
+                stream = File.OpenRead(customizationFilePath);
+                return true;
             }
         }
         else
@@ -53,13 +56,15 @@ internal static class TestFileHelper
             var currentType = typeof(Organization);
             var resourceName = GetCustomizationFilePath(path);
             var assembly = currentType.Assembly;
-            var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream != null)
+            var resourceStream = assembly.GetManifestResourceStream(resourceName);
+            if (resourceStream != null)
             {
-                return stream;
+                stream = resourceStream;
+                return true;
             }
         }
 
-        return null;
+        stream = null;
+        return false;
     }
 }

@@ -10,7 +10,7 @@ namespace CluedIn.QualityAssurance.Cli.Services;
 
 internal class EdgeExporter
 {
-    private ILogger<EdgeExporter> _logger;
+    private readonly ILogger<EdgeExporter> _logger;
     private string _outputDirectory;
     private string _neo4jUserName;
     private string _neo4jPassword;
@@ -108,16 +108,14 @@ internal class EdgeExporter
         var query = $@"MATCH (n:`/Organization`)
 WHERE n.Name = '{organizationName}'
 RETURN n.Organization AS OrganizationId LIMIT 1";
-        using (var session = driver.AsyncSession())
+        using var session = driver.AsyncSession();
+        return await session.ExecuteReadAsync(async tx =>
         {
-            return await session.ExecuteReadAsync(async tx =>
-            {
-                var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
-                var record = await result.SingleAsync();
+            var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
+            var record = await result.SingleAsync();
 
-                return record?.Values["OrganizationId"]?.ToString();
-            });
-        }
+            return record?.Values["OrganizationId"]?.ToString();
+        });
     }
 
     private void CreateHashCsvIfNotExists(string outputCsvFileName, string outputHashCsvFileName)
@@ -132,7 +130,7 @@ RETURN n.Organization AS OrganizationId LIMIT 1";
     {
         using var writer = new StreamWriter(outputCsvFileName);
         using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-        csv.WriteRecords(edges);
+        await csv.WriteRecordsAsync(edges);
     }
 
     private async Task<string> CalculateFileHash(string fileName)
@@ -158,27 +156,25 @@ AND n.`Attribute-origin` STARTS WITH '{organizationName}'
 RETURN n.Codes AS source, type(e) AS type, r.Codes AS destination
 ORDER BY source, type, destination";
 
-        using (var session = driver.AsyncSession())
+        using var session = driver.AsyncSession();
+        return await session.ExecuteReadAsync(async tx =>
         {
-            return await session.ExecuteReadAsync(async tx =>
-            {
-                var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
-                var resultList = await result.ToListAsync();
-                var resultObjectList = resultList.Select(currentResult => new Result(
-                        RemapCode(SortedHead((List<object>)currentResult.Values["source"]), mapping),
-                        currentResult.Values["type"].ToString(),
-                        RemapCode(SortedHead((List<object>)currentResult.Values["destination"]), mapping)))
-                    .Where(x => !x.source.Contains("#CluedIn"))
-                    .Distinct()
-                    .OrderBy(x => x.source)
-                    .ThenBy(x => x.type)
-                    .ThenBy(x => x.destination)
-                    .ToArray();
+            var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
+            var resultList = await result.ToListAsync();
+            var resultObjectList = resultList.Select(currentResult => new Result(
+                    RemapCode(SortedHead((List<object>)currentResult.Values["source"]), mapping),
+                    currentResult.Values["type"].ToString(),
+                    RemapCode(SortedHead((List<object>)currentResult.Values["destination"]), mapping)))
+                .Where(x => !x.source.Contains("#CluedIn"))
+                .Distinct()
+                .OrderBy(x => x.source)
+                .ThenBy(x => x.type)
+                .ThenBy(x => x.destination)
+                .ToArray();
 
 
-                return resultObjectList;
-            });
-        }
+            return resultObjectList;
+        });
     }
 
     private IDriver CreateDriver()

@@ -1,0 +1,8 @@
+{
+  "operationName": "saveCustomOriginClueMappingConfiguration",
+  "variables": {
+    "annotationId": "{{AnnotationId}}",
+    "customOrigin": "{{Origin}}"
+  },
+  "query": "mutation saveCustomOriginClueMappingConfiguration($annotationId: ID!, $customOrigin: String) {\n  management {\n    saveCustomOriginClueMappingConfiguration(\n      annotationId: $annotationId\n      customOrigin: $customOrigin\n    )\n    __typename\n  }\n}\n"
+}

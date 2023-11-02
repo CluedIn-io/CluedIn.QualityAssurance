@@ -18,7 +18,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         ILogger<ClueSendingOperation<TOptions>> logger,
         IEnvironment environment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
         : base(logger)
@@ -26,13 +26,15 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         Environment = environment ?? throw new ArgumentNullException(nameof(environment));
         ResultWriters = resultWriters ?? throw new ArgumentNullException(nameof(resultWriters));
-        CompletionChecker = rabbitMqCompletionChecker ?? throw new ArgumentNullException(nameof(rabbitMqCompletionChecker));
+        CompletionChecker = rabbitMQCompletionChecker ?? throw new ArgumentNullException(nameof(rabbitMQCompletionChecker));
         PostOperationActions = postOperationActions ?? throw new ArgumentNullException(nameof(postOperationActions));
         HttpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     }
+
     private ILogger<ClueSendingOperation<TOptions>> Logger { get; }
 
     protected Organization? Organization { get; set; }
+
     protected IEnvironment Environment { get; }
 
     private IEnumerable<IResultWriter> ResultWriters { get; }
@@ -42,8 +44,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     private IEnumerable<IPostOperationAction> PostOperationActions { get; }
 
     private SingleIterationOperationResult? PreIngestionResult { get; set; }
-    protected IHttpClientFactory HttpClientFactory { get; }
 
+    protected IHttpClientFactory HttpClientFactory { get; }
 
     protected override async Task SetUpOperationAsync(CancellationToken cancellationToken)
     {
@@ -66,13 +68,13 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         {
             try
             {
-                Logger.LogDebug($"Begin writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogDebug("Begin writing result using. '{ResultWriter}'.", currentWriter.GetType().FullName);
                 await currentWriter.ProcessAsync(Options.OutputDirectory, results, cancellationToken).ConfigureAwait(false);
-                Logger.LogDebug($"End writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogDebug("End writing result using. '{ResultWriter}'.", currentWriter.GetType().FullName);
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, $"Error when writing result using. '{currentWriter.GetType().FullName}'.");
+                Logger.LogWarning(ex, "Error when writing result using '{ResultWriter}'.", currentWriter.GetType().FullName);
             }
         }
     }
@@ -96,15 +98,19 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
                     throw;
                 }
             }
-            var result = new SingleIterationOperationResult();
-            result.HasErrors = true;
+            var result = new SingleIterationOperationResult
+            {
+                HasErrors = true
+            };
             return result;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "An exception has occurred while trying to perform test run.");
-            var result = new SingleIterationOperationResult();
-            result.HasErrors = true;
+            var result = new SingleIterationOperationResult
+            {
+                HasErrors = true
+            };
             return result;
         }
     }
@@ -141,7 +147,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         await CompletionChecker.InitializeAsync(cancellationToken).ConfigureAwait(false);
         result.StartTime = DateTimeOffset.UtcNow;
-        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes));
+        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes), cancellationToken);
         var completionCheckerTask = CompletionChecker.PollForCompletionAsync(cancellationToken);
         var testRunTask = Task.WhenAll(ExecuteIngestionAsync(cancellationToken), completionCheckerTask);
 
@@ -197,7 +203,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     {
         foreach (var operation in operations)
         {
-            using var scope = operation.LoggingScopeState != null ? this.Logger.BeginScope(operation.LoggingScopeState) : null;
+            using var scope = operation.LoggingScopeState != null ? Logger.BeginScope(operation.LoggingScopeState) : null;
             var operationName = operation.Name ?? operation.Function.Method.Name;
             Logger.LogInformation("Begin operation {OperationName}.", operationName);
             await Task.Delay(DelayBeforeOperation, cancellationToken).ConfigureAwait(false);
@@ -214,9 +220,9 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
     protected virtual Task CreateOperationData(int iterationNumber)
     {
-        string testId = CreateTestId(iterationNumber);
+        var testId = CreateTestId(iterationNumber);
         var clientId = Options.ClientIdPrefix + testId;
-        Organization = new Organization
+        Organization = new Organization()
         {
             ClientId = clientId,
             Password = Options.Password,
@@ -230,11 +236,11 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     {
         if (Options.UseShortTestIdPrefix)
         {
-            return $"{OverallResult.StartTime.ToString("MMddHHmm")}x{iterationNumber}";
+            return $"{OverallResult.StartTime:MMddHHmm}x{iterationNumber}";
         }
         else
         {
-            return $"{OverallResult.StartTime.ToString("yyyyMMddHHmmss")}x{iterationNumber}";
+            return $"{OverallResult.StartTime:yyyyMMddHHmmss}x{iterationNumber}";
         }
     }
 
@@ -328,21 +334,18 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Organization.AccessToken);
     }
 
-    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage requestMessage, CancellationToken cancellationToken, bool requireAuthorization = false, Action<HttpClient> configureClient = null, bool supressDebug = false)
+    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage requestMessage, CancellationToken cancellationToken, bool requireAuthorization = false, Action<HttpClient>? configureClient = null, bool suppressDebug = false)
     {
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
-        if (configureClient != null)
-        {
-            configureClient(client);
-        }
+        configureClient?.Invoke(client);
 
         if (requireAuthorization)
         {
             AddAuthorizationHeader(requestMessage);
         }
 
-        if (!supressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
+        if (!suppressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
         {
             var requestContent = await requestMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
             Logger.LogDebug("Making request to {Uri} with {Content}.", requestMessage.RequestUri, requestContent);
@@ -355,7 +358,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 
         var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        if (!supressDebug)
+        if (!suppressDebug)
         {
             Logger.LogDebug("Got response from request to {Uri} {Content}", requestMessage.RequestUri, content);
         }
@@ -403,17 +406,26 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         return await reader.ReadToEndAsync().ConfigureAwait(false);
     }
 
-    protected SetupOperation CreateSetupOperation<T1>(T1 t1, Func<T1, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    protected static SetupOperation CreateSetupOperation<T1>(T1 t1, Func<T1, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
     {
         return new SetupOperation(
             cancellationToken => func(t1, cancellationToken),
             func.Method.Name,
             loggingScopeState);
     }
-    protected SetupOperation CreateSetupOperation<T1, T2>(T1 t1, T2 t2, Func<T1, T2, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+
+    protected static SetupOperation CreateSetupOperation<T1, T2>(T1 t1, T2 t2, Func<T1, T2, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
     {
         return new SetupOperation(
             cancellationToken => func(t1, t2, cancellationToken),
+            func.Method.Name,
+            loggingScopeState);
+    }
+
+    protected static SetupOperation CreateSetupOperation<T1, T2, T3>(T1 t1, T2 t2, T3 t3, Func<T1, T2, T3, CancellationToken, Task> func, Dictionary<string, object>? loggingScopeState = null)
+    {
+        return new SetupOperation(
+            cancellationToken => func(t1, t2, t3, cancellationToken),
             func.Method.Name,
             loggingScopeState);
     }

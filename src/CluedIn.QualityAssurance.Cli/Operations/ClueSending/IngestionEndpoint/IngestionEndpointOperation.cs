@@ -11,16 +11,16 @@ using Microsoft.Extensions.Logging;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.IngestionEndpoint;
 
-internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEndpointOptions>
+internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpointOptions>
 {
     public IngestionEndpointOperation(
         ILogger<IngestionEndpointOperation> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory)
-        : base (logger, testEnvironment, resultWriters, rabbitMqCompletionChecker, postOperationActions, httpClientFactory)
+        : base (logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -73,67 +73,64 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
         var fileName = Path.GetFileName(fileSource.UploadFilePath);
         Logger.LogInformation("Begin streaming {FileName} to ingestion endpoint.", fileName);
 
-        int BatchSize = Options.IngestionBatchSize;
+        var batchSize = Options.IngestionBatchSize;
         var fileStream = GetUploadFileStream(fileSource);
-        using (var streamReader = new StreamReader(fileStream))
-        using (var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        using var streamReader = new StreamReader(fileStream);
+        using var csv = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             BadDataFound = null,
-        }))
+        });
+        csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
+
+        var batch = new List<Dictionary<string, string>>(batchSize);
+        var totalSent = 0;
+        try
         {
-            csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
-
-            var batch = new List<Dictionary<string, string>>(BatchSize);
-            var totalSent = 0;
-            try
+            await foreach (var currentRecord in csv.GetRecordsAsync<CsvRow>())
             {
-                var records = csv.GetRecords<CsvRow>();
-                foreach (var currentRecord in records)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    Logger.LogInformation("Aborting streaming because cancellation is requested.");
+                    return;
+                }
+                batch.Add(currentRecord.Columns);
+                if (batch.Count == batchSize)
+                {
+                    var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+                    if (success)
                     {
-                        Logger.LogInformation("Aborting streaming because cancellation is requested.");
-                        return;
+                        totalSent += batchSize;
+                        Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
                     }
-                    batch.Add(currentRecord.Columns);
-                    if (batch.Count == BatchSize)
+                    else
                     {
-                        var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-                        if (success)
-                        {
-                            totalSent += BatchSize;
-                            Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Failed to send batch. Ignoring batch.");
-                        }
-                        batch.Clear();
-                        if (Options.IngestionRequestsDelayInMilliseconds > 0)
-                        {
-                            await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken);
-                        }
+                        Logger.LogWarning("Failed to send batch. Ignoring batch.");
+                    }
+                    batch.Clear();
+                    if (Options.IngestionRequestsDelayInMilliseconds > 0)
+                    {
+                        await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to send data.");
-            }
-
-            if (batch.Count > 0)
-            {
-                Logger.LogInformation("Sending last batch of rows.");
-                var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-                if (success)
-                {
-                    totalSent += batch.Count;
-                    Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-                }
-                batch.Clear();
-            }
-            Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send data.");
+        }
+
+        if (batch.Count > 0)
+        {
+            Logger.LogInformation("Sending last batch of rows.");
+            var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+            if (success)
+            {
+                totalSent += batch.Count;
+                Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
+            }
+            batch.Clear();
+        }
+        Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
     }
 
     private async Task<bool> SendBatchToIngestionEndpointAsync(FileSource fileSource, List<Dictionary<string, string>> batch, CancellationToken cancellationToken)
@@ -155,9 +152,9 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(batch), Encoding.UTF8, "application/json"),
+                    Content = new StringContent(JsonSerializer.Serialize(batch), Encoding.UTF8, ApplicationJsonContentType),
                 };
-                var response = await SendRequestAsync(requestMessage, cancellationToken, true, supressDebug: true).ConfigureAwait(false);
+                var response = await SendRequestAsync(requestMessage, cancellationToken, requireAuthorization: true, suppressDebug: true).ConfigureAwait(false);
                 var result = await response.Content
                     .DeserializeToAnonymousTypeAsync(new
                     {
@@ -192,10 +189,16 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
         using (var csv = new CsvReader(streamReader, CultureInfo.InvariantCulture))
         {
             csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
-            var records = csv.GetRecords<CsvRow>();
-
-            return records.Take(1).Select(row => row.Columns).ToList();
+            await foreach (var record in csv.GetRecordsAsync<CsvRow>())
+            {
+                return new List<Dictionary<string, string>>
+                {
+                    record.Columns,
+                };
+            }
         }
+
+        return new List<Dictionary<string, string>>();
     }
 
     private async Task CreateDataSourceAsync(FileSource fileSource, CancellationToken cancellationToken)
@@ -209,7 +212,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -246,7 +249,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
 
@@ -275,7 +278,12 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
             throw new InvalidOperationException("DataSourceSet is not found in result.");
         }
 
-        fileSource.DataSetId = dataSetsArray[0].id.Value;
+        if (dataSetsArray[0].id.GetValueOrDefault() == Guid.Empty)
+        {
+            throw new InvalidOperationException("DataSourceSet is empty guid.");
+        }
+
+        fileSource.DataSetId = dataSetsArray[0].id.GetValueOrDefault();
     }
 
     private async Task SendSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)
@@ -294,7 +302,7 @@ internal class IngestionEndpointOperation : FileSourceOperationBase<IngestionEnd
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, "application/json"),
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
         };
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
     }

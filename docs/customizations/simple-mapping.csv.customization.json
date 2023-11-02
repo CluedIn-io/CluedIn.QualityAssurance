@@ -1,0 +1,53 @@
+{
+  "customMapping": {
+    "shouldAutoMap": false,
+    "entityType": "MyNode",
+    "vocabularyName": "MyNode",
+    "origin": "nodeid",
+    "originEntityCodeKey": "{{VocabularyKey[MyNode.id].FullName}}",
+    "nameKey": "{{VocabularyKey[MyNode.name].FullName}}",
+    "keyMappings": [{
+        "field": "id",
+        "key": "{{VocabularyKey[MyNode.id].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }, {
+        "field": "parentId",
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }, {
+        "field": "name",
+        "key": "{{VocabularyKey[MyNode.name].FullName}}",
+        "useAsEntityCode": false,
+        "useAsAlias": false,
+        "dataType": "Text"
+      }
+    ],
+    "entityCodes": [],
+    "edges": [{
+        "key": "{{VocabularyKey[MyNode.parentId].FullName}}",
+        "entityType": "{{EntityType[MyNode]}}",
+        "edgeType": "ParentOf",
+        "origin": "nodeid",
+        "direction": "outgoing"
+      }
+    ]
+  },
+  "customResult": {
+    "testResultValues": [{
+        "name": "TotalEntities",
+        "source": "Neo4j",
+        "type": "SingleValue",
+        "query": "MATCH (n:Entity:`{{ClientId}}`) WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(n) AS Total;"
+      }, {
+        "name": "TotalEdges",
+        "source": "Neo4j",
+        "type": "SingleValue",
+        "query": "MATCH (n:`Entity`:`{{ClientId}}`)-[r:`/ParentOf`]->() WHERE n.EntityType STARTS WITH '/testEntity' RETURN COUNT(r) AS Total;"
+      }
+    ]
+  }
+}

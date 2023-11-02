@@ -16,11 +16,11 @@ internal class ValidateEdgeOperation : RawCluesOperation<ValidateEdgeCreationOpt
         ILogger<ValidateEdgeOperation> logger,
         IEnvironment testEnvironment,
         IEnumerable<IResultWriter> resultWriters,
-        IRabbitMQCompletionChecker rabbitMqCompletionChecker,
+        IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory,
         EdgeExporter edgeExporter)
-        : base(logger, testEnvironment, resultWriters, rabbitMqCompletionChecker, postOperationActions, httpClientFactory)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         EdgeExporter = edgeExporter ?? throw new ArgumentNullException(nameof(edgeExporter));
