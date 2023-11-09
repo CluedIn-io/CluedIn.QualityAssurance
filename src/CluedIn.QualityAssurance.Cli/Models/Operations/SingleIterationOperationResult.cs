@@ -22,4 +22,6 @@ internal class SingleIterationOperationResult : IOperationResult
     public Organization Organization { get; set; } = new Organization();
 
     public MemoryStatistics MemoryStatistics { get; set; } = new MemoryStatistics();
+
+    public string Error { get; set; }
 }

@@ -100,7 +100,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             }
             var result = new SingleIterationOperationResult
             {
-                HasErrors = true
+                HasErrors = true,
+                Error = ex.Message + System.Environment.NewLine + ex.StackTrace
             };
             return result;
         }
@@ -109,7 +110,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             Logger.LogError(ex, "An exception has occurred while trying to perform test run.");
             var result = new SingleIterationOperationResult
             {
-                HasErrors = true
+                HasErrors = true,
+                Error = ex.Message + System.Environment.NewLine + ex.StackTrace
             };
             return result;
         }
