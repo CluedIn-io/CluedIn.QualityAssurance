@@ -53,6 +53,7 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
         var entityTypes = new List<string>();
         var client = new BoltGraphClient(connectionInfo.BoltUri, connectionInfo.UserName, connectionInfo.Password);
         await client.ConnectAsync();
+        client.DefaultDatabase = connectionInfo.DatabaseName;
         var labelsQuery = client.Cypher.Call("db.labels()").Yield("label");
         var labelsResultQuery = labelsQuery.Return<string?>("label");
 
@@ -125,6 +126,7 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
         var result = new Dictionary<string, EntityTypeCount>();
         var client = new BoltGraphClient(connectionInfo.BoltUri, connectionInfo.UserName, connectionInfo.Password);
         await client.ConnectAsync();
+        client.DefaultDatabase = connectionInfo.DatabaseName;
 
         foreach (var currentEntityType in entityTypes)
         {
