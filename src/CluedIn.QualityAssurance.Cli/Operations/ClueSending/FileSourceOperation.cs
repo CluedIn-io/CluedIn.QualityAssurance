@@ -54,6 +54,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     private ILogger<FileSourceOperation<TOptions>> Logger { get; }
 
+    public bool UseGetEntityTypeInfoWithTemplate { get; set; } = true;
+
     protected override async Task CreateOperationData(int iterationNumber)
     {
         CreateFileSources(CreateTestId(iterationNumber));
@@ -477,22 +479,20 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
 
     protected async Task<Guid?> GetEntityTypeInfoAsync(string entityType, CancellationToken cancellationToken)
-    {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
+    {        
+        var (json, errors) = await GetEntityTypeInfoAsync(entityType, UseGetEntityTypeInfoWithTemplate, cancellationToken).ConfigureAwait(false);
 
-        var body = await GetRequestTemplateAsync(nameof(GetEntityTypeInfoAsync)).ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{EntityType}}", entityType);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        if (UseGetEntityTypeInfoWithTemplate && errors.Any() && errors.Any(error => error.Message != null && error.Message.Contains("Unknown argument")))
         {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+            Logger.LogInformation("Server does not support pagetemplate, falling back to no page template.");
+            UseGetEntityTypeInfoWithTemplate = false;
+            (json, errors) = await GetEntityTypeInfoAsync(entityType, UseGetEntityTypeInfoWithTemplate, cancellationToken).ConfigureAwait(false);
+        }
 
-        var result = await response.Content
-            .DeserializeToAnonymousTypeAsync(new
+        CheckForErrors(errors);
+
+        var result = json
+            .DeserializeToAnonymousType(new
             {
                 data = new
                 {
@@ -507,10 +507,28 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                         }
                     },
                 },
-            })
-            .ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+            }) ?? throw new InvalidOperationException("Invalid result because it is empty.");
 
         return result.data?.management?.getEntityTypeInfo?.id;
+    }
+
+    private async Task<(string json, IEnumerable<GraphQLError> Errors)> GetEntityTypeInfoAsync(string entityType, bool withPageTemplate, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var suffix = withPageTemplate ? "WithPageTemplate" : "WithoutPageTemplate";
+        var body = await GetRequestTemplateAsync($"{nameof(GetEntityTypeInfoAsync)}.{suffix}").ConfigureAwait(false);
+        var replacedBody = body
+            .Replace("{{EntityType}}", entityType);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true, throwIfNotSuccessCode: false).ConfigureAwait(false);
+
+        return await GetJsonResponse(response, GetSerializerOptions());
     }
 
     protected Task CreateEntityTypeIfNotExistsAsync(FileSource fileSource, CancellationToken cancellationToken)
@@ -1304,20 +1322,26 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         return TestFileHelper.GetTestFileStream(fileSource.UploadFilePath);
     }
 
-    private static async Task<string> CheckResponse(HttpResponseMessage response)
+    private static async Task<(string Json, IEnumerable<GraphQLError> Errors)> GetJsonResponse(HttpResponseMessage response, JsonSerializerOptions? options = null)
     {
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = json
                     .DeserializeToAnonymousType(new
                     {
                         errors = (GraphQLError[]?)null,
-                    }) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+                    }, options) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+                
+        return (json,  result.errors ?? Array.Empty<GraphQLError>());
+    }
 
-        CheckForErrors(result.errors);
+    private static async Task<string> CheckResponse(HttpResponseMessage response)
+    {
+        var (json, errors) = await GetJsonResponse(response);
+        CheckForErrors(errors);
         return json;
     }
 
-    private static void CheckForErrors(GraphQLError[]? errors)
+    private static void CheckForErrors(IEnumerable<GraphQLError> errors)
     {
         if (errors != null && errors.Any())
         {

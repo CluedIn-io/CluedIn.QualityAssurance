@@ -1,0 +1,7 @@
+{
+  "operationName": "getEntityTypeInfo",
+  "variables": {
+    "type": "/{{EntityType}}"
+  },
+  "query": "query getEntityTypeInfo($type: String!) {\r\n  management {\r\n    getEntityTypeInfo(type: $type, includePageTemplate: false) {\r\n      id\r\n      icon\r\n      displayName\r\n      type\r\n      route\r\n      path\r\n      active\r\n      layoutConfiguration\r\n      pageTemplateId\r\n      __typename\r\n    }\r\n    __typename\r\n  }\r\n}"
+}
