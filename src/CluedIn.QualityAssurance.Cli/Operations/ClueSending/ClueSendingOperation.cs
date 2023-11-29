@@ -336,7 +336,13 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Organization.AccessToken);
     }
 
-    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage requestMessage, CancellationToken cancellationToken, bool requireAuthorization = false, Action<HttpClient>? configureClient = null, bool suppressDebug = false)
+    protected async Task<HttpResponseMessage> SendRequestAsync(
+        HttpRequestMessage requestMessage,
+        CancellationToken cancellationToken,
+        bool requireAuthorization = false,
+        Action<HttpClient>? configureClient = null,
+        bool suppressDebug = false,
+        bool throwIfNotSuccessCode = true)
     {
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
@@ -365,7 +371,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             Logger.LogDebug("Got response from request to {Uri} {Content}", requestMessage.RequestUri, content);
         }
 
-        if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode && throwIfNotSuccessCode)
         {
             throw new InvalidOperationException("Failed to perform request successfully.");
         }
