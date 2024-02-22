@@ -500,7 +500,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                     {
                         getEntityTypeInfo = new
                         {
-                            id = (Guid?)null,
+                            id = (string?)null,
                             type = (string?)null,
                             route = (string?)null,
                             icon = (string?)null,
@@ -509,7 +509,18 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 },
             }) ?? throw new InvalidOperationException("Invalid result because it is empty.");
 
-        return result.data?.management?.getEntityTypeInfo?.id;
+        var id = result.data?.management?.getEntityTypeInfo?.id;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        if (Guid.TryParse(id, out var parsedId))
+        {
+            return parsedId;
+        }
+
+        throw new InvalidOperationException($"The id value '{id}' returned is not a guid.");
     }
 
     private async Task<(string json, IEnumerable<GraphQLError> Errors)> GetEntityTypeInfoAsync(string entityType, bool withPageTemplate, CancellationToken cancellationToken)
