@@ -1013,8 +1013,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var replacedBody = body
             .Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
             .Replace("{{OriginalField}}", keyMapping.Field)
-            .Replace("{{UseAsAlias}}", keyMapping.UseAsAlias.ToString().ToLowerInvariant())
-            .Replace("{{UseAsEntityCode}}", keyMapping.UseAsEntityCode.ToString().ToLowerInvariant())
+            .Replace("{{UseAsAlias}}", keyMapping.UseAsAlias.GetValueOrDefault().ToString().ToLowerInvariant())
+            .Replace("{{UseAsEntityCode}}", keyMapping.UseAsEntityCode.GetValueOrDefault().ToString().ToLowerInvariant())
             .Replace("{{VocabularyId}}", vocabularyId.ToString())
             .Replace("{{VocabularyKeyId}}", vocabularyKeyId.ToString());
 
@@ -1120,8 +1120,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         var replacedBody = body.Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
             .Replace("{{VocabularyKeyFullName}}", vocabularyKeyFullName)
             .Replace("{{Origin}}", entityCode.Origin)
-            .Replace("{{UseAsEntityCode}}", entityCode.UseAsEntityCode.ToString().ToLower())
-            .Replace("{{UseAsSourceCode}}", entityCode.UseAsSourceCode.ToString().ToLower());
+            .Replace("{{UseAsEntityCode}}", entityCode.UseAsEntityCode.GetValueOrDefault().ToString().ToLowerInvariant())
+            .Replace("{{UseAsSourceCode}}", entityCode.UseAsSourceCode.GetValueOrDefault().ToString().ToLowerInvariant());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1384,11 +1384,11 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         public IEnumerable<CustomRequest> CustomRequests { get; set; } = Enumerable.Empty<CustomRequest>();
     }
 
-    protected record EntityCode(string Key, string Origin, bool UseAsEntityCode, bool UseAsSourceCode);
+    protected record EntityCode(string Key, string Origin, bool? UseAsEntityCode, bool? UseAsSourceCode);
 
     protected record EntityEdge(string Key, string EdgeType, string Origin, string EntityType, string Direction);
 
-    protected record KeyMapping(string Field, string Key, bool UseAsEntityCode, bool UseAsAlias);
+    protected record KeyMapping(string Field, string Key, bool? UseAsEntityCode, bool? UseAsAlias);
 
     protected record CustomRequest(string Name, string Request, List<RequestOutputVariable> OutputVariables);
 
