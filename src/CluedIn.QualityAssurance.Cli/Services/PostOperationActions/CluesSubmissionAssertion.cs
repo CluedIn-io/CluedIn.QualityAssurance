@@ -86,7 +86,7 @@ internal class CluesSubmissionAssertion : IPostOperationAction
             var uris = await TestEnvironment.GetServerUriCollectionAsync(cancellationToken);
             var httpClient = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Organization.AccessToken);
-            var response = await httpClient.GetStringAsync(new Uri(uris.WebApiUri, $"api/entity?id={elasticEntity.Id}&full=true")).ConfigureAwait(false);
+            var response = await httpClient.GetStringAsync(new Uri(uris.WebApiUri, $"api/entity?id={elasticEntity.Id}&full=true"), cancellationToken).ConfigureAwait(false);
 
             var entity = CluedInSerializer.DeserializeFromJson<Entity>(response);
 

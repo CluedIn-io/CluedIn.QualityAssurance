@@ -14,6 +14,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
     where TOptions : IClueSendingOperationOptions
 {
     private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(1);
+
     public ClueSendingOperation(
         ILogger<ClueSendingOperation<TOptions>> logger,
         IEnvironment environment,
@@ -180,6 +181,8 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             Logger.LogInformation("Running post operation actions with allowed list {AllowedList}.", Options.AllowedPostOperationActions);
             foreach (var current in PostOperationActions)
             {
+                // TODO: Create a http client to login automaticall
+                await LoginAsync(cancellationToken);
                 var currentActionName = current.GetType().Name;
                 if (Options.AllowedPostOperationActions != null && Options.AllowedPostOperationActions.Any()
                     && !Options.AllowedPostOperationActions.Contains(currentActionName))
@@ -355,7 +358,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         if (!suppressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
         {
-            var requestContent = await requestMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var requestContent = await requestMessage.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             Logger.LogDebug("Making request to {Uri} with {Content}.", requestMessage.RequestUri, requestContent);
         }
         else
@@ -365,7 +368,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
 
         var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 
-        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (!suppressDebug)
         {
             Logger.LogDebug("Got response from request to {Uri} {Content}", requestMessage.RequestUri, content);
