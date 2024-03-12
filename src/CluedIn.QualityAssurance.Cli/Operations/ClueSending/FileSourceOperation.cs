@@ -684,7 +684,11 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 var (vocabularyKeyId, _) = await PollForVocabularyKeyCreationCompletionAsync(vocabularyId, keyResult.vocabularyKey, cancellationToken).ConfigureAwait(false);
                 keyId = vocabularyKeyId;
             }
-            keyId = keyResult.id.GetValueOrDefault();
+            else
+            {
+                keyId = keyResult.id.GetValueOrDefault();
+            }
+
             if (keyId == Guid.Empty)
             {
                 throw new InvalidOperationException("Invalid key id. It is empty.");
