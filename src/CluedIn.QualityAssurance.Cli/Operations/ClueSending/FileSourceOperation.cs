@@ -1254,7 +1254,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
                 throw new InvalidOperationException($"Input directory '{Options.InputDirectoryPath}' does not exist.");
             }
             files = Directory.GetFiles(Options.InputDirectoryPath)
-                .Where(file => !file.EndsWith(".customization.json"));
+                .Where(file => !file.EndsWith(".customization.json") && !new FileInfo(file).Attributes.HasFlag(FileAttributes.Hidden));
         }
         else
         {
