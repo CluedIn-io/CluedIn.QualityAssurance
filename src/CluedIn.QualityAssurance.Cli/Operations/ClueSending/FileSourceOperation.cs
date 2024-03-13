@@ -3,6 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+
+using Azure;
+
+using CluedIn.Core.Data;
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
@@ -16,7 +20,7 @@ using SystemEnvironment = System.Environment;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
-internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOptions>
+internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOperation<TOptions>
     where TOptions : IClueSendingOperationOptions, IFileSourceOperationOptions
 {
     protected const string ApplicationJsonContentType = "application/json";
@@ -52,6 +56,8 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
     private ILogger<FileSourceOperation<TOptions>> Logger { get; }
 
     public bool UseGetEntityTypeInfoWithTemplate { get; set; } = true;
+
+    public bool UseAddEntityCodeViaAnnotationCode { get; set; } = true;
 
     protected override async Task CreateOperationData(int iterationNumber)
     {
@@ -157,6 +163,7 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
         }
 
         AddPropertyMappingOperations(operations, fileSource, customMapping, customizationFileBody);
+        operations.Add(CreateSetupOperation(fileSource, GetVocabularyKeyToAnnotationKeyMappingAsync));
         AddEntityCodeOperations(operations, fileSource, customMapping, customizationFileBody);
         AddEntityEdgeOperations(operations, fileSource, customMapping, customizationFileBody);
 
@@ -1113,16 +1120,46 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
     protected async Task AddEntityCodeAsync(FileSource fileSource, EntityCode entityCode, CancellationToken cancellationToken)
     {
+        if (UseAddEntityCodeViaAnnotationCode)
+        {
+            var (_, errors) = await AddEntityCodeViaAnnotationCodeAsync(fileSource, entityCode, cancellationToken);
+
+            if (errors.Any())
+            {
+                var isMissingMethod = errors.Any(error =>
+                    error.Message != null && error.Message.StartsWith("Cannot query field \"createAnnotationCode\""));
+
+                if (isMissingMethod)
+                {
+                    Logger.LogInformation(
+                        "Mutation createAnnotationCode is not found. Falling back to creating entity code using mapping.");
+                    UseAddEntityCodeViaAnnotationCode = false;
+                    await AddEntityCodeViaMappingAsync(fileSource, entityCode, cancellationToken);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to create entity code.");
+                }
+            }
+        }
+        else
+        {
+            await AddEntityCodeViaMappingAsync(fileSource, entityCode, cancellationToken);
+        }
+    }
+
+    protected async Task AddEntityCodeViaMappingAsync(FileSource fileSource, EntityCode entityCode, CancellationToken cancellationToken)
+    {
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
         var vocabularyKeyFullName = ReplaceCustomVocabularyParameters(fileSource, entityCode.Key);
-        var body = await GetRequestTemplateAsync(nameof(AddEntityCodeAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{VocabularyKeyFullName}}", vocabularyKeyFullName)
-            .Replace("{{Origin}}", entityCode.Origin)
-            .Replace("{{UseAsEntityCode}}", entityCode.UseAsEntityCode.GetValueOrDefault().ToString().ToLowerInvariant())
-            .Replace("{{UseAsSourceCode}}", entityCode.UseAsSourceCode.GetValueOrDefault().ToString().ToLowerInvariant());
+        var replacedBody = Requests.AddEntityCode(
+            annotationId: fileSource.AnnotationId,
+            vocabularyKeyFullName: vocabularyKeyFullName,
+            entityCodeOrigin: entityCode.Origin,
+            entityCode.UseAsEntityCode.GetValueOrDefault(),
+            entityCode.UseAsSourceCode.GetValueOrDefault());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1131,6 +1168,83 @@ internal abstract class FileSourceOperation<TOptions> : ClueSendingOperation<TOp
 
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
         _ = await CheckResponse(response).ConfigureAwait(false);
+    }
+
+    protected async Task<(string Json, IEnumerable<GraphQLError> Errors)> AddEntityCodeViaAnnotationCodeAsync(FileSource fileSource, EntityCode entityCode, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var vocabularyKeyFullName = ReplaceCustomVocabularyParameters(fileSource, entityCode.Key);
+        if (!fileSource.VocabularyKeyToAnnotationKeyMapping.TryGetValue(vocabularyKeyFullName, out var annotationKey))
+        {
+            throw new InvalidOperationException($"Annotation key is not found for {vocabularyKeyFullName}.");
+        }
+        var replacedBody = Requests.AddEntityCodeViaAnnotationCode(
+            annotationId: fileSource.AnnotationId,
+            vocabularyKeyFullName: vocabularyKeyFullName,
+            entityCodeOrigin: entityCode.Origin,
+            annotationKey,
+            entityCode.UseAsSourceCode.GetValueOrDefault());
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var result = await GetJsonResponse(response, GetSerializerOptions());
+        return result;
+    }
+
+    protected async Task GetVocabularyKeyToAnnotationKeyMappingAsync(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+
+        var replacedBody = Requests.GetAnnotationById(annotationId: fileSource.AnnotationId);
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var result = await response.Content
+            .DeserializeToAnonymousTypeAsync(new
+            {
+                data = new
+                {
+                    preparation = new
+                    {
+                        annotation = new
+                        {
+                            annotationProperties = new[]
+                            {
+                                new
+                                {
+                                    key = (string?)null,
+                                    useAsEntityCode = (bool?)null,
+                                    useSourceCode = (bool?)null,
+                                    vocabKey = (string?)null,
+                                },
+                            },
+                        },
+                    },
+                },
+            }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+
+        var annotationProperties = result.data?.preparation?.annotation?.annotationProperties
+                                   ?? throw new InvalidOperationException("Invalid result because properties is not found.");
+
+        if (annotationProperties.Any(prop =>
+                string.IsNullOrWhiteSpace(prop.key) || string.IsNullOrWhiteSpace(prop.vocabKey)))
+        {
+            throw new InvalidOperationException("Invalid result because key or vocabKey is null/whitespace.");
+        }
+        var properties = annotationProperties.ToDictionary(prop => prop.vocabKey!, prop => prop.key!);
+
+        fileSource.VocabularyKeyToAnnotationKeyMapping = properties;
     }
 
     protected async Task GetAnnotationIdAsync(FileSource fileSource, CancellationToken cancellationToken)

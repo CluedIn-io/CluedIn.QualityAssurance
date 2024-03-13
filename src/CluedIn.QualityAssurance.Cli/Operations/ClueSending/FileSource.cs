@@ -18,20 +18,22 @@ internal class FileSource
 
     public Guid VocabularyId { get; set; }
 
-    public Dictionary<string, CustomVocabularyMappingEntry> CustomVocabulariesMapping { get; set; } =  new Dictionary<string, CustomVocabularyMappingEntry>();
+    public Dictionary<string, CustomVocabularyMappingEntry> CustomVocabulariesMapping { get; set; } =  new();
 
     public string EntityType { get; set; }
 
-    public Dictionary<string, string> CustomEntityTypesMapping { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> CustomEntityTypesMapping { get; set; } = new();
 
     public bool IsExternalUploadFilePath { get; set; }
 
     public string EntityTypeRoute => EntityType.ToLowerInvariant();
+
+    public Dictionary<string, string> VocabularyKeyToAnnotationKeyMapping { get; set; } = new();
 }
 
 public record CustomVocabularyMappingEntry(string Name, Guid Id)
 {
-    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; init; } = new Dictionary<string, CustomVocabularyKeyMappingEntry>();
+    public Dictionary<string, CustomVocabularyKeyMappingEntry> KeysMapping { get; init; } = new();
 }
 
 public record CustomVocabularyKeyMappingEntry(string Name, Guid Id);
