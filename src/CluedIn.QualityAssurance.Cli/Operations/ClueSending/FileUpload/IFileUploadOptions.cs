@@ -1,6 +1,4 @@
-﻿using CommandLine.Text;
-using CommandLine;
-using Newtonsoft.Json;
+﻿using CommandLine;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 

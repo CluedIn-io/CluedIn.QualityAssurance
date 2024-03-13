@@ -1,12 +1,10 @@
-﻿using CluedIn.Core.Accounts;
-using CluedIn.QualityAssurance.Cli.Environments;
+﻿using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Models.ElasticSearch;
 using CluedIn.QualityAssurance.Cli.Models.Neo4j;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Models.SqlServer;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Neo4j.Driver;
 using Neo4jClient;
 using System.Net.Http.Json;
 using System.Text;

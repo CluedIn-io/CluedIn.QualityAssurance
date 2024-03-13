@@ -1,10 +1,7 @@
 ﻿using System.Globalization;
-using System.Text.Json;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CsvHelper;
-using CsvHelper.Configuration;
 using Microsoft.Extensions.Logging;
-using Spectre.Console;
 
 namespace CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 

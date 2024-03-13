@@ -6,7 +6,6 @@ using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
-using System;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 

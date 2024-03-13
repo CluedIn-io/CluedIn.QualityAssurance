@@ -1,21 +1,18 @@
 ﻿using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
+using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
-using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
-using System.Text.RegularExpressions;
-using JsonCons.JsonPath;
-using Spectre.Console;
 
+using JsonCons.JsonPath;
+
+using Microsoft.Extensions.Logging;
 using SystemEnvironment = System.Environment;
-using CluedIn.Core.Data;
-using static System.Net.Mime.MediaTypeNames;
-using CluedIn.Core;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 

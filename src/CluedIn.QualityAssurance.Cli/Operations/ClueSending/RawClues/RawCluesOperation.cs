@@ -1,5 +1,4 @@
-﻿using CluedIn.QualityAssurance.Cli.Models.Operations;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using RestSharp;
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;

@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 using CluedIn.QualityAssurance.Cli.Models.ElasticSearch;
 using CluedIn.QualityAssurance.Cli.Models.Neo4j;

@@ -1,6 +1,4 @@
-﻿using Nest;
-
-namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
+﻿namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
 internal class FileSource
 {

@@ -1,5 +1,4 @@
-﻿using CluedIn.QualityAssurance.Cli.Validators;
-using CommandLine;
+﻿using CommandLine;
 
 namespace CluedIn.QualityAssurance.Cli.Environments;
 
