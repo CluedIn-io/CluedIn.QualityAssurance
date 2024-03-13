@@ -11,15 +11,15 @@ namespace CluedIn.QualityAssurance.Cli.Services;
 internal class EdgeExporter
 {
     private readonly ILogger<EdgeExporter> _logger;
-    private string _outputDirectory;
-    private string _neo4jUserName;
-    private string _neo4jPassword;
-    private string _neo4jUri;
+    private string? _outputDirectory;
+    private string? _neo4jUserName;
+    private string? _neo4jPassword;
+    private string? _neo4jUri;
 
     internal List<OrganizationEdgeDetails> OrganizationResults { get; set; } = new();
     internal EdgeSummary[] Summary { get; private set; }
 
-    public EdgeExporter(ILogger<EdgeExporter> logger)
+    public EdgeExporter(ILogger<EdgeExporter>? logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

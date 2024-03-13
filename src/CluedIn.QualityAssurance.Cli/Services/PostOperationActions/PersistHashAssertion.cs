@@ -115,22 +115,18 @@ internal class PersistHashAssertion : IPostOperationAction
                         FETCH NEXT @pageSize ROWS ONLY";
         var start = 0;
         var pageSize = Constants.PagingPageSize;
-        using (var connection = new SqlConnection(connectionString))
+        await using (var connection = new SqlConnection(connectionString))
         {
-            connection.Open();
+            await connection.OpenAsync(cancellationToken);
             while (true)
             {
                 var parameters = new { result.Organization.OrganizationId, start, pageSize };
                 var entities = await connection.QueryAsync<Entity>(query, parameters).ConfigureAwait(false);
                 foreach (var entity in entities)
                 {
-                    var blobHash = string.Empty;
-                    var elasticHash = string.Empty;
-                    var neoHash = string.Empty;
-                    var response = await httpClient.GetFromJsonAsync<EntityResponse>(new Uri(uris.WebApiUri, $"api/entity?id={entity.Id}&full=true")).ConfigureAwait(false);
+                    var response = await httpClient.GetFromJsonAsync<EntityResponse>(new Uri(uris.WebApiUri, $"api/entity?id={entity.Id}&full=true"), cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                    allEntities.Add(new Entity { Id = response.Entity.Id, PersistHash = response.Entity.PersistHash });
-                    //Logger.LogDebug($"Entity: {entity.Id}, Blob: '{blobHash}', Elastic: '{elasticHash}', Neo4j: '{neoHash}'.");
+                    allEntities.Add(new Entity(entity.Id, response?.Entity?.PersistHash ?? string.Empty));
                 }
                 if (entities.Count() < pageSize)
                 {
@@ -191,11 +187,10 @@ internal class PersistHashAssertion : IPostOperationAction
                 var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);
                 return await result.ToListAsync(record =>
                 {
-                    return new Entity
-                    {
-                        Id = record["Id"].As<string>(),
-                        PersistHash = record["PersistHash"].As<string>(),
-                    };
+                    return new Entity(
+                        record["Id"].As<string>(),
+                        record["PersistHash"].As<string>()
+                    );
                 }).ConfigureAwait(false);
             }).ConfigureAwait(false);
 
@@ -211,12 +206,7 @@ internal class PersistHashAssertion : IPostOperationAction
         return allEntities.ToDictionary(entity => entity.Id, entity => entity.PersistHash);
     }
 
-    public class Entity
-    {
-        public string Id { get; set; }
-
-        public string PersistHash { get; set; }
-    }
+    public record Entity(string Id, string PersistHash);
 
     public class EntityResponse
     {
