@@ -81,7 +81,7 @@ internal class EdgeExporter
 
         if (string.IsNullOrEmpty(_outputDirectory))
         {
-            throw new InvalidOperationException($"'{nameof(_outputDirectory)}' cannot be null or empty.", nameof(_outputDirectory));
+            throw new InvalidOperationException($"'{nameof(_outputDirectory)}' cannot be null or empty.");
         }
         var outputCsvFileName = Path.Combine(_outputDirectory, $"edges-{organizationName}.csv");
         await ExportToCsv(outputCsvFileName, edges).ConfigureAwait(false);
