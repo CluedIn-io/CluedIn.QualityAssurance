@@ -180,7 +180,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             Logger.LogInformation("Running post operation actions with allowed list {AllowedList}.", Options.AllowedPostOperationActions);
             foreach (var current in PostOperationActions)
             {
-                // TODO: Create a http client to login automaticall
+                // TODO: Create a http client to login automatically
                 await LoginAsync(cancellationToken);
                 var currentActionName = current.GetType().Name;
                 if (Options.AllowedPostOperationActions != null && Options.AllowedPostOperationActions.Any()
@@ -195,7 +195,7 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
             }
         }
 
-        Logger.LogInformation("Finished processing result for {Organization}.", Organization.ClientId);
+        Logger.LogInformation("Finished processing result for {Organization}.", Organization?.ClientId);
         return result;
     }
 

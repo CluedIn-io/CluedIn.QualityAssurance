@@ -32,7 +32,17 @@ internal class EdgeExporter
         public TimeSpan TimeToProcess { get; set; }
     }
 
-    public void Initialize(string outputDirectory, string neo4jUri, string neo4jUserName, string neo4jPassword)
+    public void Initialize(string? outputDirectory, string? neo4jUri, string? neo4jUserName, string? neo4jPassword)
+    {
+        ValidateParameters(outputDirectory, neo4jUri, neo4jUserName, neo4jPassword);
+
+        _outputDirectory = outputDirectory;
+        _neo4jUri = neo4jUri;
+        _neo4jUserName = neo4jUserName;
+        _neo4jPassword = neo4jPassword;
+    }
+
+    private static void ValidateParameters(string? outputDirectory, string? neo4jUri, string? neo4jUserName, string? neo4jPassword)
     {
         if (string.IsNullOrEmpty(outputDirectory))
         {
@@ -53,11 +63,6 @@ internal class EdgeExporter
         {
             throw new ArgumentException($"'{nameof(neo4jPassword)}' cannot be null or whitespace.", nameof(neo4jPassword));
         }
-
-        _outputDirectory = outputDirectory;
-        _neo4jUri = neo4jUri;
-        _neo4jUserName = neo4jUserName;
-        _neo4jPassword = neo4jPassword;
     }
 
     public async Task<OrganizationEdgeDetails> GetEdgeDetailsAsync(string organizationName, Dictionary<string, string> mapping)
@@ -74,6 +79,10 @@ internal class EdgeExporter
     {
         var edges = await GetEdgesFromNeo(organizationName, mapping).ConfigureAwait(false);
 
+        if (string.IsNullOrEmpty(_outputDirectory))
+        {
+            throw new InvalidOperationException($"'{nameof(_outputDirectory)}' cannot be null or empty.", nameof(_outputDirectory));
+        }
         var outputCsvFileName = Path.Combine(_outputDirectory, $"edges-{organizationName}.csv");
         await ExportToCsv(outputCsvFileName, edges).ConfigureAwait(false);
 
@@ -148,15 +157,17 @@ RETURN n.Organization AS OrganizationId LIMIT 1";
         _logger.LogInformation("Fetching edge data from neo");
         var driver = CreateDriver();
 
-        var query = $@"MATCH (n)-[e]->(r) 
-WHERE type(e) <> '/Code'
-AND type(e) <> '/DiscoveredAt'
-AND type(e) <> '/ModifiedAt'
-AND n.`Attribute-origin` STARTS WITH '{organizationName}'
-RETURN n.Codes AS source, type(e) AS type, r.Codes AS destination
-ORDER BY source, type, destination";
+        var query = $"""
+                    MATCH (n)-[e]->(r)
+                    WHERE type(e) <> '/Code'
+                        AND type(e) <> '/DiscoveredAt'
+                        AND type(e) <> '/ModifiedAt'
+                        AND n.`Attribute-origin` STARTS WITH '{organizationName}'
+                    RETURN n.Codes AS source, type(e) AS type, r.Codes AS destination
+                    ORDER BY source, type, destination
+                    """;
 
-        using var session = driver.AsyncSession();
+        await using var session = driver.AsyncSession();
         return await session.ExecuteReadAsync(async tx =>
         {
             var result = await tx.RunAsync(query, new Dictionary<string, object>()).ConfigureAwait(false);

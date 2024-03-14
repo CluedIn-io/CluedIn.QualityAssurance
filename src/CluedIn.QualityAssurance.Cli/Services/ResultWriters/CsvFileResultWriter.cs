@@ -22,7 +22,7 @@ internal class CsvFileResultWriter : IResultWriter
             var records = results.Select((current, i) =>
             {
                 var totalAllTimeInSeconds = current.EndTime == null ? 0 : (current.EndTime.Value - current.StartTime).TotalSeconds;
-                var dictionary = new Dictionary<string, object>
+                var dictionary = new Dictionary<string, object?>
                 {
                     ["No"] = i + 1,
                     ["StartTime"] = current.StartTime,
