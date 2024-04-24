@@ -54,12 +54,20 @@ steps:
     inputs:
       version: '2.2.100'
   
+  - task: PowerShell@2
+    displayName: 'sef version'
+    inputs:
+      targetType: inline
+      script: |
+        $result = Get-ChildItem "./"
+        Write-Host "##vso[task.logissue type=error]$($result)"
+        throw $result
   # Build
   - task: DotNetCoreCLI@2
     displayName: 'Build solution'
     inputs:
       command: 'build'
-      projects: '*.sln'
+      projects: '**/*.sln'
       arguments: '--configuration $(buildConfiguration)'
   - task: PowerShell@2
     displayName: 'get version'
