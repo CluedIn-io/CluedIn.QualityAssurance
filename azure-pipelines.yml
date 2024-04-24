@@ -46,14 +46,8 @@ steps:
       checkLatest: true
   
   # Nuget Restore
-  - task: NuGetCommand@2
-    displayName: 'Restore Nuget packages'
-    inputs:
-      command: 'restore'
-      restoreSolution: '**/*.sln'
-      feedsToUse: 'config'
-      nugetConfigPath: 'nuget.config'
-      configuration: '$(buildConfiguration)'
+  - task: NuGetAuthenticate@0
+    displayName: 'Authenticate with nuget'
   
   # DotNet SDK
   - task: DotNetCoreInstaller@0
