@@ -39,36 +39,11 @@ variables:
     value: Release
 
 steps:
-  # Install NuGet
-  - task: NuGetToolInstaller@1
-    displayName: 'Install Nuget'
-    inputs:
-      checkLatest: true
-  
-  # Nuget Restore
+
+  # Configure NuGet
   - task: NuGetAuthenticate@0
     displayName: 'Authenticate with nuget'
-  
-  # DotNet SDK
-  - task: DotNetCoreInstaller@0
-    inputs:
-      version: '2.2.100'
-  
-  - task: PowerShell@2
-    displayName: 'sef version'
-    inputs:
-      targetType: inline
-      script: |
-        $result = (Get-ChildItem .).Name
-        Write-Host "##vso[task.logissue type=error]$($result)"
-        throw $result
-  # Build
-  - task: DotNetCoreCLI@2
-    displayName: 'Build solution'
-    inputs:
-      command: 'build'
-      projects: '**/*.sln'
-      arguments: '--configuration $(buildConfiguration)'
+    
   - task: PowerShell@2
     displayName: 'get version'
     inputs:
@@ -77,11 +52,6 @@ steps:
         Push-Location "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\Roslyn"
         $result = invoke-expression "./csc.exe /langversion:?"
         Write-Host "##vso[task.logissue type=error]$($result)"
-        throw $result
-
-  # Configure NuGet
-  - task: NuGetAuthenticate@0
-    displayName: 'Authenticate with nuget'
 
   - template: crawler.build.yml@templates
     parameters:
