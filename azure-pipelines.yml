@@ -59,7 +59,7 @@ steps:
     inputs:
       targetType: inline
       script: |
-        $result = Get-Location
+        $result = (Get-ChildItem .).Name
         Write-Host "##vso[task.logissue type=error]$($result)"
         throw $result
   # Build
