@@ -59,7 +59,7 @@ steps:
     displayName: 'Build solution'
     inputs:
       command: 'build'
-      projects: '**/*.sln'
+      projects: '*.sln'
       arguments: '--configuration $(buildConfiguration)'
   - task: PowerShell@2
     displayName: 'get version'
