@@ -39,6 +39,15 @@ variables:
     value: Release
 
 steps:
+  - task: PowerShell@2
+    displayName: 'get version'
+    inputs:
+      targetType: inline
+      script: |
+        Push-Location "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\Roslyn"
+        $result = invoke-expression "./csc.exe /langversion:?"
+        Write-Host "##vso[task.logissue type=error]$($result)"
+        throw $result
   - task: UseDotNet@2
     displayName: Install .NET SDK 6.0
     inputs:
