@@ -1,17 +1,20 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
+
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
+
 using CsvHelper;
 using CsvHelper.Configuration;
+
 using Microsoft.Extensions.Logging;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.IngestionEndpoint;
 
-internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpointOptions>
+internal partial class IngestionEndpointOperation : FileSourceOperation<IngestionEndpointOptions>
 {
     public IngestionEndpointOperation(
         ILogger<IngestionEndpointOperation> logger,
@@ -206,9 +209,9 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(CreateDataSourceAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{UserId}}", Organization.UserId.ToString())
-            .Replace("{{DataSourceSetId}}", fileSource.DataSourceSetId.ToString());
+        var replacedBody = RequestTemplates.CreateDataSourceAsync(
+            dataSourceSetId: fileSource.DataSourceSetId,
+            userId: Organization.UserId);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -242,10 +245,10 @@ internal class IngestionEndpointOperation : FileSourceOperation<IngestionEndpoin
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(CreateDataSetAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{UserId}}", Organization.UserId.ToString())
-            .Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType + "Dummy");
+        var replacedBody = RequestTemplates.CreateDataSetAsync(
+            dataSourceId: fileSource.DataSourceId,
+            userId: Organization.UserId,
+            entityType: fileSource.EntityType + "Dummy");
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

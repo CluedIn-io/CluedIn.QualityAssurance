@@ -1,10 +1,14 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+
+using Azure.Core;
+
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
+
 using Microsoft.Extensions.Logging;
 
 using RestSharp;
@@ -13,7 +17,7 @@ using SystemEnvironment = System.Environment;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 
-internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
+internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptions>
 {
     private const int TotalGetDataSetIdRetries = 10;
     private static readonly TimeSpan DelayBetweenGetDataSetIdRetries = TimeSpan.FromSeconds(30);
@@ -311,8 +315,7 @@ internal class FileUploadOperation : FileSourceOperation<FileUploadOptions>
         var requestUri = serverUris.UiGraphqlUri;
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
-        var body = await GetRequestTemplateAsync(nameof(CommitDataSetAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString());
+        var replacedBody = RequestTemplates.CommitDataSetAsync(fileSource.DataSetId);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

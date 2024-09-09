@@ -1,32 +1,41 @@
-﻿namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
+﻿using CluedIn.Core.Data.Vocabularies;
+
+using Newtonsoft.Json;
+
+namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
 internal abstract partial class FileSourceOperation<TOptions>
 {
-    private static class Requests
+    private static class RequestTemplates
     {
         public static string AddEntityCodeViaAnnotationCode(
-        int annotationId,
-        string vocabularyKeyFullName,
-        string entityCodeOrigin,
-        string vocabularyKeyAnnotationKey,
-        bool useAsSourceCode)
+            int annotationId,
+            string vocabularyKeyFullName,
+            string entityCodeOrigin,
+            string vocabularyKeyAnnotationKey,
+            bool useAsSourceCode)
         {
+            #region Request
+            var requestString = $$"""
+            mutation createAnnotationCode($annotationCode: InputAnnotationCode) {              preparation {                id                createAnnotationCode(annotationCode: $annotationCode) {                  id                  __typename                }                __typename              }            }
+            """;
+            #endregion
             return $$"""
-        {
-          "operationName": "createAnnotationCode",
-          "variables": {
-            "annotationCode": {
-              "vocabKey": "{{vocabularyKeyFullName}}",
-              "entityCodeOrigin": "{{entityCodeOrigin}}",
-              "key": "{{vocabularyKeyAnnotationKey}}",
-              "type": "String",
-              "annotationId": "{{annotationId}}",
-              "sourceCode": {{useAsSourceCode.ToString().ToLowerInvariant()}}
+            {
+              "operationName": "createAnnotationCode",
+              "variables": {
+                "annotationCode": {
+                  "vocabKey": "{{vocabularyKeyFullName}}",
+                  "entityCodeOrigin": "{{entityCodeOrigin}}",
+                  "key": "{{vocabularyKeyAnnotationKey}}",
+                  "type": "String",
+                  "annotationId": "{{annotationId}}",
+                  "sourceCode": {{useAsSourceCode.ToString().ToLowerInvariant()}}
+                }
+              },
+              "query": {{JsonConvert.SerializeObject(requestString)}}
             }
-          },
-          "query": "mutation createAnnotationCode($annotationCode: InputAnnotationCode) {\n  preparation {\n    id\n    createAnnotationCode(annotationCode: $annotationCode) {\n      id\n      __typename\n    }\n    __typename\n  }\n}\n"
-        }
-        """;
+            """;
         }
 
         public static string AddEntityCode(
@@ -36,6 +45,12 @@ internal abstract partial class FileSourceOperation<TOptions>
             bool useAsEntityCode,
             bool useAsSourceCode)
         {
+            #region Request
+            var requestString = $$"""
+            mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {              management {                modifyBatchVocabularyClueMappingConfiguration(                  annotationId: $annotationId                  batchPropertyMappings: $batchPropertyMappings                )                __typename              }            }
+            """;
+            #endregion
+
             return $$"""
             {
               "operationName": "modifyBatchVocabularyClueMappingConfiguration",
@@ -52,7 +67,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                   ]
                 }
               },
-              "query": "mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {\n  management {\n    modifyBatchVocabularyClueMappingConfiguration(\n      annotationId: $annotationId\n      batchPropertyMappings: $batchPropertyMappings\n    )\n    __typename\n  }\n}\n"
+              "query": {{JsonConvert.SerializeObject(requestString)}}
             }
             """;
         }
@@ -60,17 +75,309 @@ internal abstract partial class FileSourceOperation<TOptions>
         public static string GetAnnotationById(
             int annotationId)
         {
+            #region Request
+            var requestString = $$"""
+            query getAnnotationById($id: ID) {
+              preparation {
+                id
+                annotation(id: $id) {
+                  id
+                  annotationCodeSetup
+                  isDynamicVocab
+                  name
+                  entityType
+                  previewImageKey
+                  nameKey
+                  descriptionKey
+                  originEntityCodeKey
+                  createdDateMap
+                  modifiedDateMap
+                  cultureKey
+                  origin
+                  versionKey
+                  beforeCreatingClue
+                  beforeSendingClue
+                  useStrictEdgeCode
+                  useDefaultSourceCode
+                  vocabularyId
+                  vocabulary {
+                    vocabularyName
+                    vocabularyId
+                    providerId
+                    keyPrefix
+                    __typename
+                  }
+                  entityTypeConfiguration {
+                    icon
+                    displayName
+                    entityType
+                    __typename
+                  }
+                  annotationProperties {
+                    key
+                    vocabKey
+                    coreVocab
+                    useAsEntityCode
+                    useAsAlias
+                    useSourceCode
+                    entityCodeOrigin
+                    vocabularyKeyId
+                    type
+                    annotationEdges {
+                      id
+                      key
+                      edgeType
+                      entityTypeConfiguration {
+                        icon
+                        displayName
+                        entityType
+                        __typename
+                      }
+                      origin
+                      dataSourceGroupId
+                      dataSourceId
+                      dataSetId
+                      direction
+                      edgeProperties {
+                        id
+                        annotationEdgeId
+                        originalField
+                        vocabularyKey {
+                          displayName
+                          vocabularyKeyId
+                          isCluedInCore
+                          isDynamic
+                          isObsolete
+                          isProvider
+                          vocabularyId
+                          name
+                          isVisible
+                          key
+                          mappedKey
+                          groupName
+                          dataClassificationCode
+                          dataType
+                          description
+                          providerId
+                          mapsToOtherKeyId
+                          __typename
+                        }
+                        __typename
+                      }
+                      __typename
+                    }
+                    vocabularyKey {
+                      displayName
+                      vocabularyKeyId
+                      isCluedInCore
+                      isDynamic
+                      isObsolete
+                      isProvider
+                      vocabularyId
+                      name
+                      isVisible
+                      key
+                      mappedKey
+                      groupName
+                      dataClassificationCode
+                      dataType
+                      description
+                      providerId
+                      mapsToOtherKeyId
+                      __typename
+                    }
+                    validations {
+                      id
+                      displayName
+                      inverse
+                      parameters {
+                        key
+                        value
+                        __typename
+                      }
+                      __typename
+                    }
+                    transformations {
+                      filters {
+                        parameters {
+                          key
+                          value
+                          __typename
+                        }
+                        id
+                        displayName
+                        inverse
+                        __typename
+                      }
+                      operations {
+                        inverse
+                        parameters {
+                          key
+                          value
+                          __typename
+                        }
+                        id
+                        displayName
+                        __typename
+                      }
+                      __typename
+                    }
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }
+            """;
+            #endregion
             return $$"""
             {
               "operationName": "getAnnotationById",
               "variables": {
                 "id": "{{annotationId}}"
               },
-              "query": "query getAnnotationById($id: ID) {\n  preparation {\n    id\n    annotation(id: $id) {\n      id\n      annotationCodeSetup\n      isDynamicVocab\n      name\n      entityType\n      previewImageKey\n      nameKey\n      descriptionKey\n      originEntityCodeKey\n      createdDateMap\n      modifiedDateMap\n      cultureKey\n      origin\n      versionKey\n      beforeCreatingClue\n      beforeSendingClue\n      useStrictEdgeCode\n      useDefaultSourceCode\n      vocabularyId\n      vocabulary {\n        vocabularyName\n        vocabularyId\n        providerId\n        keyPrefix\n        __typename\n      }\n      entityTypeConfiguration {\n        icon\n        displayName\n        entityType\n        __typename\n      }\n      annotationProperties {\n        displayName\n        key\n        vocabKey\n        coreVocab\n        useAsEntityCode\n        useAsAlias\n        useSourceCode\n        entityCodeOrigin\n        vocabularyKeyId\n        type\n        annotationEdges {\n          id\n          key\n          edgeType\n          entityTypeConfiguration {\n            icon\n            displayName\n            entityType\n            __typename\n          }\n          origin\n          dataSourceGroupId\n          dataSourceId\n          dataSetId\n          direction\n          edgeProperties {\n            id\n            annotationEdgeId\n            originalField\n            vocabularyKey {\n              displayName\n              vocabularyKeyId\n              isCluedInCore\n              isDynamic\n              isObsolete\n              isProvider\n              vocabularyId\n              name\n              isVisible\n              key\n              mappedKey\n              groupName\n              dataClassificationCode\n              dataType\n              description\n              providerId\n              mapsToOtherKeyId\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        vocabularyKey {\n          displayName\n          vocabularyKeyId\n          isCluedInCore\n          isDynamic\n          isObsolete\n          isProvider\n          vocabularyId\n          name\n          isVisible\n          key\n          mappedKey\n          groupName\n          dataClassificationCode\n          dataType\n          description\n          providerId\n          mapsToOtherKeyId\n          __typename\n        }\n        validations {\n          id\n          displayName\n          inverse\n          parameters {\n            key\n            value\n            __typename\n          }\n          __typename\n        }\n        transformations {\n          filters {\n            parameters {\n              key\n              value\n              __typename\n            }\n            id\n            displayName\n            inverse\n            __typename\n          }\n          operations {\n            inverse\n            parameters {\n              key\n              value\n              __typename\n            }\n            id\n            displayName\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n"
+              "query": {{JsonConvert.SerializeObject(requestString)}}
             }
             """;
         }
-    }
-    
+
+        public static string AddEntityEdgeAsync(
+            int annotationId,
+            string entityType,
+            string edgeType,
+            string origin,
+            string edgeDirection,
+            string vocabularyKeyFullName)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation addEdgeMapping($annotationId: ID!, $key: String!, $edgeConfiguration: InputEdgeConfiguration) {              management {                addEdgeMapping(                  annotationId: $annotationId                  key: $key                  edgeConfiguration: $edgeConfiguration                )                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "addEdgeMapping",
+              "variables": {
+                "annotationId": "{{annotationId}}",
+                "edgeConfiguration": {
+                  "edgeProperties": [],
+                  "entityTypeConfiguration": {
+                    "new": false,
+                    "icon": "Twitter",
+                    "entityType": "/{{entityType}}",
+                    "displayName": "{{entityType}}"
+                  },
+                  "edgeType": "/{{edgeType}}",
+                  "origin": "{{origin}}",
+                  "direction": "{{edgeDirection}}"
+                },
+                "key": "{{vocabularyKeyFullName}}"
+              },
+              "query": {{JsonConvert.SerializeObject(requestString)}}
+            }
+            """;
+        }
+
+        public static string AddPropertyMappingAsync(
+            Guid dataSetId,
+            string originalField,
+            bool useAsAlias,
+            bool useAsEntityCode,
+            Guid vocabularyId,
+            Guid vocabularyKeyId)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation addPropertyMappingToCluedMappingConfiguration($dataSetId: ID!, $propertyMappingConfiguration: InputPropertyMappingConfiguration, $extra: Boolean) {              management {                addPropertyMappingToCluedMappingConfiguration(                  dataSetId: $dataSetId                  propertyMappingConfiguration: $propertyMappingConfiguration                  extra: $extra                )                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "addPropertyMappingToCluedMappingConfiguration",
+              "variables": {
+                "dataSetId": "{{dataSetId}}",
+                "propertyMappingConfiguration": {
+                  "originalField": "{{originalField}}",
+                  "useAsAlias": {{useAsAlias.ToString().ToLowerInvariant()}},
+                  "useAsEntityCode": {{useAsEntityCode.ToString().ToLowerInvariant()}},
+                  "vocabularyKeyConfiguration": {
+                    "vocabularyId": "{{vocabularyId}}",
+                    "new": false,
+                    "vocabularyKeyId": "{{vocabularyKeyId}}"
+                  }
+                }
+              },
+              "query": {{JsonConvert.SerializeObject(requestString)}}
+            }
+            """;
+        }
+
+        public static string CreateAutoAnnotationAsync(
+            Guid dataSetId,
+            string entityType,
+            string vocabularyName,
+            Guid vocabularyId)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation createAutoAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {              management {                createAutoAnnotation(                  dataSetId: $dataSetId                  type: $type                  mappingConfiguration: $mappingConfiguration                  isDynamicVocab: $isDynamicVocab                ) {                  id                  __typename                }                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createAutoAnnotation",
+              "variables": {
+                "dataSetId": "{{dataSetId}}",
+                "type": "file",
+                "mappingConfiguration": {
+                  "entityTypeConfiguration": {
+                    "icon": "Twitter",
+                    "new": false,
+                    "displayName": "{{entityType}}",
+                    "entityType": "/{{entityType}}"
+                  },
+                  "ignoredFields": [],
+                  "vocabularyConfiguration": {
+                    "new": false,
+                    "keyPrefix": "{{vocabularyName}}",
+                    "vocabularyName": "{{vocabularyName}}",
+                    "vocabularyId": "{{vocabularyId}}"
+                  }
+                },
+                "isDynamicVocab": true
+              },
+              "query": {{JsonConvert.SerializeObject(requestString)}}
+            }
+            """;
+        }
+
+        public static string CreateDataSourceSetAsync(
+            string dataSourceSetName,
+            Guid userId)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {              inbound {                createDataSourceSet(dataSourceSet: $dataSourceSet)                __typename              }            }            
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createDataSourceSet",
+              "variables": {
+                "dataSourceSet": {
+                  "name": "{{dataSourceSetName}}",
+                  "author": "{{userId}}"
+                }
+              },
+              "query": {{JsonConvert.SerializeObject(requestString)}}
+            }
+            """;
+        }
+    }    
 }
 
