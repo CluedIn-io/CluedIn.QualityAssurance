@@ -1,4 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using CluedIn.Core.FileTypes;
+
+using Newtonsoft.Json;
+
+using Serilog.Sinks.File;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 
@@ -26,6 +30,26 @@ internal partial class FileUploadOperation
                 "dataSetId": "{{dataSetId}}"
               },
               "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string ResumeUploadRequestAsync(
+            string fileName,
+            long fileSize,
+            string mimeType,
+            string dataSourceName,
+            int dataSourceGroupId)
+        {
+            return $$"""
+            {
+              "fileName": "{{fileName}}",
+              "fileSize": {{fileSize}},
+              "mimeType": "{{mimeType}}",
+              "noHeaders": false,
+              "dataSourceName": "{{dataSourceName}}",
+              "dataSourceGroupId": "{{dataSourceGroupId}}",
+              "dataSourceGroupName": ""
             }
             """;
         }

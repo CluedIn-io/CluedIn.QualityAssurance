@@ -49,6 +49,13 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 
     protected override async Task SetUpOperationAsync(CancellationToken cancellationToken)
     {
+        if (Options.ShouldCreateSubdirectoryForOutput)
+        {
+            Options.OutputDirectory = Path.Combine(Options.OutputDirectory, GetTestIdPrefix());
+            _ = Directory.CreateDirectory(Options.OutputDirectory);
+            Logger.LogInformation("Updating output directory to be {OutputDirectoryPath}' because create-subdirectory-for-output is set.", Options.OutputDirectory);
+        }
+
         await Environment.SetupAsync(cancellationToken).ConfigureAwait(false);
         if (Options.IsReingestion)
         {
@@ -238,13 +245,23 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 
     protected virtual string CreateTestId(int iterationNumber)
     {
+        return $"{GetTestIdPrefix()}x{iterationNumber}";
+    }
+
+    protected virtual string CreateOutputFolderName(int iterationNumber)
+    {
+        return GetTestIdPrefix();
+    }
+
+    protected virtual string GetTestIdPrefix()
+    {
         if (Options.UseShortTestIdPrefix)
         {
-            return $"{OverallResult.StartTime:MMddHHmm}x{iterationNumber}";
+            return $"{OverallResult.StartTime:MMddHHmm}";
         }
         else
         {
-            return $"{OverallResult.StartTime:yyyyMMddHHmmss}x{iterationNumber}";
+            return $"{OverallResult.StartTime:yyyyMMddHHmmss}";
         }
     }
 

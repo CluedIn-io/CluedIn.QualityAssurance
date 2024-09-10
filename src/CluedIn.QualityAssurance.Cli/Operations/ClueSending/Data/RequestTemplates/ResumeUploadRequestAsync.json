@@ -1,9 +1,0 @@
-{
-  "fileName": "{{FileName}}",
-  "fileSize": {{FileSize}},
-  "mimeType": "{{MimeType}}",
-  "noHeaders": false,
-  "dataSourceName": "{{DataSourceName}}",
-  "dataSourceGroupId": "{{DataSourceGroupId}}",
-  "dataSourceGroupName": ""
-}

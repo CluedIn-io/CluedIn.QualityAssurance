@@ -20,6 +20,9 @@ internal interface IClueSendingOperationOptions : IMultiIterationOptions
     [Option("output-directory", Required = true, HelpText = "Result output directory.")]
     public string OutputDirectory { get; set; }
 
+    [Option("create-subdirectory-for-output", Required = false, HelpText = "Create subdirectory for output.")]
+    public bool ShouldCreateSubdirectoryForOutput { get; set; }
+
     [Option("skip-post-operation-actions", Default = false, Required = false, HelpText = "Skips post operation actions.")]
     public bool SkipPostOperationActions { get; set; }
 

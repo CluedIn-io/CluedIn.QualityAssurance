@@ -418,6 +418,108 @@ internal abstract partial class FileSourceOperation<TOptions>
             }
             """;
         }
-    }    
+
+        public static string CreateEntityTypeAsync(
+            string entityType,
+            string entityTypeRoute)
+        {
+            #region Request
+
+            var variable = $$"""
+            {
+              "type": "/{{entityType}}",
+              "active": true,
+              "displayName": "{{entityType}}",
+              "icon": "Twitter",
+              "route": "{{entityTypeRoute}}",
+              "pageTemplateId": ""
+            }
+            """;
+            var requestString = $$"""
+            mutation createEntityTypeConfigurationV2($entityTypeConfiguration: String!) {              management {                createEntityTypeConfigurationV2(                  entityTypeConfiguration: $entityTypeConfiguration                )                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createEntityTypeConfigurationV2",
+              "variables": {
+                "entityTypeConfiguration": {{GraphqlQueryHelper.Serialize(variable)}}
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string SetNameKeyAsync(
+            int annotationId,
+            string nameKey)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation modifyAnnotation($annotation: InputEntityAnnotation) {              preparation {                modifyAnnotation(annotation: $annotation)                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "modifyAnnotation",
+              "variables": {
+                "annotation": {
+                  "id": "{{annotationId}}",
+                  "nameKey": "{{nameKey}}"
+                }
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string SetOriginAsync(
+            int annotationId,
+            string origin)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation saveCustomOriginClueMappingConfiguration($annotationId: ID!, $customOrigin: String) {              management {                saveCustomOriginClueMappingConfiguration(                  annotationId: $annotationId                  customOrigin: $customOrigin                )                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "saveCustomOriginClueMappingConfiguration",
+              "variables": {
+                "annotationId": "{{annotationId}}",
+                "customOrigin": "{{origin}}"
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string SetOriginEntityCodeKeyAsync(
+            int annotationId,
+            string originEntityCodeKey)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation modifyAnnotation($annotation: InputEntityAnnotation) {              preparation {                modifyAnnotation(annotation: $annotation)                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "modifyAnnotation",
+              "variables": {
+                "annotation": {
+                  "id": "{{annotationId}}",
+                  "originEntityCodeKey": "{{originEntityCodeKey}}"
+                }
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+    }
 }
 

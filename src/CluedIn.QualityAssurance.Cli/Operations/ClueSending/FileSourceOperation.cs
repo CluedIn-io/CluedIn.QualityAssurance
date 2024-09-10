@@ -554,10 +554,9 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(CreateEntityTypeAsync)).ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{EntityType}}", entityType)
-            .Replace("{{EntityTypeRoute}}", entityType.ToLower());
+        var replacedBody = RequestTemplates.CreateEntityTypeAsync(
+            entityType: entityType,
+            entityTypeRoute: entityType.ToLower());
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1279,11 +1278,11 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(SetNameKeyAsync)).ConfigureAwait(false);
         var replacedNameKey = ReplaceCustomVocabularyParameters(fileSource, nameKey);
-        var replacedBody = body
-            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{VocabularyKeyFullName}}", replacedNameKey);
+
+        var replacedBody = RequestTemplates.SetNameKeyAsync(
+            annotationId: fileSource.AnnotationId,
+            nameKey: replacedNameKey);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1298,11 +1297,10 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(SetOriginEntityCodeKeyAsync)).ConfigureAwait(false);
         var replacedKey = ReplaceCustomVocabularyParameters(fileSource, originEntityCodeKey);
-        var replacedBody = body
-            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{OriginEntityCodeKey}}", replacedKey);
+        var replacedBody = RequestTemplates.SetOriginEntityCodeKeyAsync(
+            annotationId: fileSource.AnnotationId,
+            originEntityCodeKey: replacedKey);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1317,10 +1315,9 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(SetOriginAsync)).ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{AnnotationId}}", fileSource.AnnotationId.ToString())
-            .Replace("{{Origin}}", origin);
+        var replacedBody = RequestTemplates.SetOriginAsync(
+            annotationId: fileSource.AnnotationId,
+            origin: origin);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

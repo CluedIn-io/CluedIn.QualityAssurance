@@ -2,8 +2,6 @@
 using System.Net.Http.Headers;
 using System.Text;
 
-using Azure.Core;
-
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
@@ -82,14 +80,14 @@ internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptio
         var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
 
         using var stream = GetUploadFileStream(fileSource);
-        var body = await GetRequestTemplateAsync(nameof(ResumeUploadRequestAsync)).ConfigureAwait(false);
         var fileName = Path.GetFileName(fileSource.UploadFilePath);
-        var replacedBody = body
-            .Replace("{{FileName}}", fileName)
-            .Replace("{{FileSize}}", stream.Length.ToString())
-            .Replace("{{MimeType}}", GetMimeType(fileSource.UploadFilePath))
-            .Replace("{{DataSourceName}}", fileName)
-            .Replace("{{DataSourceGroupId}}", fileSource.DataSourceSetId.ToString());
+
+        var replacedBody = RequestTemplates.ResumeUploadRequestAsync(
+            fileName: fileName,
+            fileSize: stream.Length,
+            mimeType: GetMimeType(fileSource.UploadFilePath),
+            dataSourceName: fileName,
+            dataSourceGroupId: fileSource.DataSourceSetId);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

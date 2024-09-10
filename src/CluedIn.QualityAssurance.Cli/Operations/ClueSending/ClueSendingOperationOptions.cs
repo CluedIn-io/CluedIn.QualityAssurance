@@ -40,6 +40,8 @@ internal abstract class ClueSendingOperationOptions : IClueSendingOperationOptio
     [DirectoryExists]
     public string OutputDirectory { get; set; }
 
+    public bool ShouldCreateSubdirectoryForOutput { get; set; }
+
     #region Kubernetes
     public string ContextName { get; set; }
 
