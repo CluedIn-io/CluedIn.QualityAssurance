@@ -9,7 +9,7 @@ using System.Net.Http.Headers;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
-internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation<TOptions, MultiIterationOperationResult, SingleIterationOperationResult>
+internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationOperation<TOptions, MultiIterationOperationResult, SingleIterationOperationResult>
     where TOptions : IClueSendingOperationOptions
 {
     private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(1);
@@ -385,11 +385,10 @@ internal abstract class ClueSendingOperation<TOptions> : MultiIterationOperation
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = new Uri(serverUris.PublicApiUri, "api/v1/clue?save=true");
 
-        var body = await GetRequestTemplateAsync(nameof(SubmitSampleClueAsync)).ConfigureAwait(false);
-
-        var replacedBody = body.Replace("{{OrganizationId}}", Organization.OrganizationId.ToString())
-            .Replace("{{CurrentClueUuid}}", Guid.NewGuid().ToString())
-            .Replace("{{CurrentClueCount}}", 1.ToString());
+        var replacedBody = RequestTemplates.SubmitSampleClueAsync(
+            organizationId: Organization.OrganizationId,
+            currentClueUuid: Guid.NewGuid(),
+            currentClueCount: 1);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

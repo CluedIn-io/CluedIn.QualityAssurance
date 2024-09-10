@@ -1076,12 +1076,11 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(CreateManualAnnotationAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString())
-            .Replace("{{VocabularyName}}", fileSource.VocabularyName)
-            .Replace("{{VocabularyId}}", fileSource.VocabularyId.ToString())
-            .Replace("{{EntityType}}", fileSource.EntityType)
-            .Replace("{{KeysConfig}}", JsonSerializer.Serialize(new string[] { })); // TODO: Add Keysconfig
+        var replacedBody = RequestTemplates.CreateManualAnnotationAsync(
+            dataSetId: fileSource.DataSetId,
+            entityType: fileSource.EntityType,
+            vocabularyName: fileSource.VocabularyName,
+            vocabularyId: fileSource.VocabularyId);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {

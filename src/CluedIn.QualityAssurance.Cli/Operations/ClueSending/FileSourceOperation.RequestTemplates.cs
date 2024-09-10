@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -359,7 +359,7 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {              inbound {                createDataSourceSet(dataSourceSet: $dataSourceSet)                __typename              }            }            
+            mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {              inbound {                createDataSourceSet(dataSourceSet: $dataSourceSet)                __typename              }            }
             """;
             #endregion
 
@@ -371,6 +371,48 @@ internal abstract partial class FileSourceOperation<TOptions>
                   "name": "{{dataSourceSetName}}",
                   "author": "{{userId}}"
                 }
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string CreateManualAnnotationAsync(
+            Guid dataSetId,
+            string entityType,
+            string vocabularyName,
+            Guid vocabularyId)
+        {
+            var keysConfig = JsonSerializer.Serialize(new string[] { }); // TODO: Add Keysconfig
+            #region Request
+            var requestString = $$"""
+            mutation createManualAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {              management {                createManualAnnotation(                  dataSetId: $dataSetId                  type: $type                  mappingConfiguration: $mappingConfiguration                  isDynamicVocab: $isDynamicVocab                ) {                  id                  __typename                }                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createManualAnnotation",
+              "variables": {
+                "dataSetId": "{{dataSetId}}",
+                "type": "file",
+                "mappingConfiguration": {
+                  "entityTypeConfiguration": {
+                    "icon": "Twitter",
+                    "new": false,
+                    "displayName": "{{entityType}}",
+                    "entityType": "/{{entityType}}"
+                  },
+                  "ignoredFields": [],
+                  "vocabularyConfiguration": {
+                    "new": false,
+                    "keyPrefix": "{{vocabularyName}}",
+                    "vocabularyName": "{{vocabularyName}}",
+                    "vocabularyId": "{{vocabularyId}}"
+                  },
+                  "keysConfig": {{keysConfig}}
+                },
+                "isDynamicVocab": true
               },
               "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
