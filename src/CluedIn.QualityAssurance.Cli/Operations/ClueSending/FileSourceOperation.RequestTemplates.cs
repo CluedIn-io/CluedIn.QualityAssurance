@@ -1,6 +1,4 @@
-﻿using CluedIn.Core.Data.Vocabularies;
-
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -33,7 +31,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                   "sourceCode": {{useAsSourceCode.ToString().ToLowerInvariant()}}
                 }
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -67,7 +65,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                   ]
                 }
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -237,7 +235,7 @@ internal abstract partial class FileSourceOperation<TOptions>
               "variables": {
                 "id": "{{annotationId}}"
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -275,7 +273,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                 },
                 "key": "{{vocabularyKeyFullName}}"
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -310,7 +308,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                   }
                 }
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -350,7 +348,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                 },
                 "isDynamicVocab": true
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -374,7 +372,7 @@ internal abstract partial class FileSourceOperation<TOptions>
                   "author": "{{userId}}"
                 }
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }

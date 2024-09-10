@@ -1,6 +1,4 @@
-﻿using CluedIn.Core.DataStore.Entities.MicroServices;
-
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.IngestionEndpoint;
 
@@ -54,7 +52,7 @@ internal partial class IngestionEndpointOperation
                   }
                 ]
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
@@ -88,7 +86,7 @@ internal partial class IngestionEndpointOperation
                   "name": "MyIngest"
                 }
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }

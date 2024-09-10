@@ -25,7 +25,7 @@ internal partial class FileUploadOperation
               "variables": {
                 "dataSetId": "{{dataSetId}}"
               },
-              "query": {{JsonConvert.SerializeObject(requestString)}}
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }
             """;
         }
