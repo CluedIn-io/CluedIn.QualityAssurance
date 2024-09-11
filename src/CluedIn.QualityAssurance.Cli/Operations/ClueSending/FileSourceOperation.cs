@@ -1037,8 +1037,7 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = serverUris.UiGraphqlUri;
 
-        var body = await GetRequestTemplateAsync(nameof(GetDataSourceByIdAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSourceId}}", fileSource.DataSourceId.ToString());
+        var replacedBody = RequestTemplates.GetDataSourceByIdAsync(fileSource.DataSourceId);
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
@@ -1258,10 +1257,10 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
                         {
                             dataSets = new[]
                             {
-                            new
-                            {
-                                annotationId = (int?)null
-                            },
+                                new
+                                {
+                                    annotationId = (int?)null
+                                },
                             },
                         },
                     },

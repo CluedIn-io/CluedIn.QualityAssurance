@@ -520,6 +520,29 @@ internal abstract partial class FileSourceOperation<TOptions>
             }
             """;
         }
+
+        public static string GetDataSourceByIdAsync(
+            int dataSourceId)
+        {
+            #region Request
+            var requestString = $$"""
+            query getDataSourceById($id: ID!) {              inbound {                dataSource(id: $id) {                  id                  canBeDeleted                  name                  hasError                  latestErrorMessage                  errorType                  author {                    id                    username                    __typename                  }                  fileMetadata {                    fileName                    processing
+                    uploading
+                    uploadedPercentage
+                    mimeType                    __typename                  }                  createdAt                  type                  dataSourceSet {                    id                    name                    __typename                  }                  sql                  connectionStatus {                    connected                    errorMessage                    __typename                  }                  dataSets {                    id                    name                    annotationId                    elasticTotal                    expectedTotal                    annotation {                      originEntityCodeKey                      annotationProperties {                        key                        __typename                      }                      __typename                    }                    stats {                      total                      successful                      failed                      __typename                    }                    author {                      id                      username                      __typename                    }                    createdAt                    updatedAt                    dataSource {                      id                      __typename                    }                    __typename                  }                  connectorConfigurationId                  connectorConfiguration {                    id                    name                    accountDisplay                    accountId                    active                    autoSync                    codeName                    configuration                    connector {                      id                      icon                      name                      authMethods                      properties                      streamModes                      __typename                    }                    createdDate                    entityId                    failingAuthentication                    guide                    helperConfiguration                    providerId                    reAuthEndpoint                    source                    sourceQuality                    stats                    status                    supportsAutomaticWebhookCreation                    supportsConfiguration                    supportsWebhooks                    userId                    userName                    users {                      id                      username                      roles                      __typename                    }                    webhookManagementEndpoints                    webhooks                    __typename                  }                  __typename                }                __typename              }            }            
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "getDataSourceById",
+              "variables": {
+                "id": "{{dataSourceId}}"
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
     }
 }
 

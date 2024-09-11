@@ -1,10 +1,4 @@
-﻿using CluedIn.Core.FileTypes;
-
-using Newtonsoft.Json;
-
-using Serilog.Sinks.File;
-
-namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
+﻿namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.FileUpload;
 
 internal partial class FileUploadOperation
 {
@@ -14,9 +8,9 @@ internal partial class FileUploadOperation
         {
             #region Request
             var requestString = $$"""
-            mutation commitDataSet($dataSetId: ID) {
+            mutation commitDataSet($dataSetId: ID, $purgeQuarantine: Boolean) {
               inbound {
-                commitDataSet(dataSetId: $dataSetId)
+                commitDataSet(dataSetId: $dataSetId, purgeQuarantine: $purgeQuarantine)
                 __typename
               }
             }
@@ -27,7 +21,8 @@ internal partial class FileUploadOperation
             {
               "operationName": "commitDataSet",
               "variables": {
-                "dataSetId": "{{dataSetId}}"
+                "dataSetId": "{{dataSetId}}",
+                "purgeQuarantine": true
               },
               "query": {{GraphqlQueryHelper.Serialize(requestString)}}
             }

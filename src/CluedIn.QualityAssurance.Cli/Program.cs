@@ -35,6 +35,7 @@ internal class Program
                                 .Select(x => x.OperationType)
                                 .Single();
 
+            var operationLoggerLevelSwitch = new LoggingLevelSwitch();
             var host = Host.CreateDefaultBuilder(args)
                         .ConfigureServices((hostContext, services) =>
                         {
@@ -54,21 +55,26 @@ internal class Program
                             var operationOptions = options as IOperationOptions;
                             if (operationOptions != null)
                             {
-                                var serilogLevel = operationOptions.LogLevel switch
-                                {
-                                    LogLevel.Trace => LogEventLevel.Verbose,
-                                    LogLevel.Debug => LogEventLevel.Debug,
-                                    LogLevel.Information => LogEventLevel.Information,
-                                    LogLevel.Warning => LogEventLevel.Warning,
-                                    LogLevel.Error => LogEventLevel.Error,
-                                    LogLevel.Critical => LogEventLevel.Fatal,
-                                    _ => LogEventLevel.Debug,
-                                };
+                                var serilogLevel = ToLogEventLevel(operationOptions.LogLevel);
                                 loggerConfiguration.MinimumLevel.Is(serilogLevel);
 
                                 if (!string.IsNullOrWhiteSpace(operationOptions.LogFilePath))
                                 {
                                     loggerConfiguration.WriteTo.File(operationOptions.LogFilePath, outputTemplate: OutputTemplate);
+                                    loggerConfiguration.WriteTo.Map(
+                                        "ClientId",
+                                        "NotConfigured",
+                                        (key, sinkConfiguration) =>
+                                        {
+                                            if (key != "NotConfigured" && options is IClueSendingOperationOptions clueSendingOperationOptions)
+                                            {
+                                                var filePath = Path.Combine(clueSendingOperationOptions.OutputDirectory, $"log-{key}.txt");
+                                                sinkConfiguration.File(filePath);
+                                                operationLoggerLevelSwitch.MinimumLevel = ToLogEventLevel(clueSendingOperationOptions.LogLevel);
+                                            }
+                                        },
+                                        restrictedToMinimumLevel: ((LogEventLevel)1 + (int)LogEventLevel.Fatal),
+                                        levelSwitch: operationLoggerLevelSwitch);
                                 }
                             }
                             else
@@ -250,5 +256,21 @@ internal class Program
         {
             le.RemovePropertyIfPresent("SourceContext");
         }
+    }
+
+    private static LogEventLevel ToLogEventLevel(LogLevel logLevel)
+    {
+        return logLevel switch
+        {
+            LogLevel.Trace => LogEventLevel.Verbose,
+            LogLevel.Debug => LogEventLevel.Debug,
+            LogLevel.Information => LogEventLevel.Information,
+            LogLevel.Warning => LogEventLevel.Warning,
+            LogLevel.Error => LogEventLevel.Error,
+            LogLevel.Critical => LogEventLevel.Fatal,
+            LogLevel.None => (LogEventLevel)1 + (int)LogEventLevel.Fatal,
+            _ => throw new NotSupportedException($"LogLevel {logLevel} is not supported")
+        };
+        ;
     }
 }

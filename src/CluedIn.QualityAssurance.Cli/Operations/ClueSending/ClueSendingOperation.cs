@@ -86,11 +86,29 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         }
     }
 
+    private static Dictionary<string, object> CreateIterationScope(string clientId)
+    {
+        return new Dictionary<string, object>
+        {
+            ["ClientId"] = clientId,
+        };
+    }
+
     protected override async Task<SingleIterationOperationResult> ExecuteIterationAsync(int iterationNumber, CancellationToken cancellationToken)
     {
         try
         {
             await SetOrganizationAsync(iterationNumber);
+        }
+        catch(Exception ex)
+        {
+            return createErrorResult(ex);
+        }
+
+        using var scope = Logger.BeginScope(CreateIterationScope(Organization.ClientId));
+
+        try
+        {
             return await ExecuteIterationInternalAsync(Options.IsReingestion, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
@@ -113,6 +131,11 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
             return result;
         }
         catch (Exception ex)
+        {
+            return createErrorResult(ex);
+        }
+
+        SingleIterationOperationResult createErrorResult(Exception ex)
         {
             Logger.LogError(ex, "An exception has occurred while trying to perform test run.");
             var result = new SingleIterationOperationResult

@@ -19,6 +19,7 @@ internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptio
 {
     private const int TotalGetDataSetIdRetries = 10;
     private static readonly TimeSpan DelayBetweenGetDataSetIdRetries = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DelayBetweenDataSourceReadinessRetries = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DelayBetweenDataSetCommits = TimeSpan.FromSeconds(5);
 
     public FileUploadOperation(
@@ -67,6 +68,7 @@ internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptio
                 }
 
                 operations.Add(CreateSetupOperation(fileSource, GetDataSetIdAsync));
+                operations.Add(CreateSetupOperation(fileSource, EnsureDataSourceReady));
                 await AddMappingOperationsAsync(operations, fileSource, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -290,12 +292,64 @@ internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptio
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to get data set id. Will retry in {TimeBetweenRetries}", DelayBetweenGetDataSetIdRetries);
+                Logger.LogWarning(ex, "Failed to get data set id. Will retry in {TimeBetweenRetries}.", DelayBetweenGetDataSetIdRetries);
                 await Task.Delay(DelayBetweenGetDataSetIdRetries, cancellationToken);
             }
-
         }
         throw new InvalidOperationException("Failed to get dataset id after multiple tries");
+    }
+
+    private async Task EnsureDataSourceReady(FileSource fileSource, CancellationToken cancellationToken)
+    {
+        while(true)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogWarning("Cancelling operation of GetDataSetIdAsync because cancellation is requested.");
+                return;
+            }
+            var response = await GetDataSourceByIdAsync(fileSource, cancellationToken).ConfigureAwait(false);
+            var result = await response.Content
+                .DeserializeToAnonymousTypeAsync(new
+                {
+                    data = new
+                    {
+                        inbound = new
+                        {
+                            dataSource = new
+                            {
+                                fileMetadata = new
+                                {
+                                    fileName = (string?)null,
+                                    uploading = (bool?)null,
+                                    processing = (bool?)null,
+                                    uploadedPercentage = (int?)null,
+                                    mimeType = (string?)null,
+                                },
+                            },
+                        },
+                    },
+                }).ConfigureAwait(false) ?? throw new InvalidOperationException("Invalid result because it is empty.");
+
+            var fileMetadata = result.data?.inbound?.dataSource?.fileMetadata;
+
+            if (fileMetadata?.uploading == false
+                && fileMetadata?.processing == false
+                && fileMetadata?.uploadedPercentage == 100)
+            {
+                Logger.LogInformation("DataSource {DataSourceId} is ready.", fileSource.DataSourceId);
+                break;
+            }
+
+            Logger.LogInformation(
+                "DataSource {DataSourceId} is NOT ready, uploading: {Uploading}, processing: {Processing}, uploadedPercentage: {UploadedPercentage}. Will retry in {TimeBetweenRetries}.",
+                fileSource.DataSourceId,
+                fileMetadata?.uploading,
+                fileMetadata?.processing,
+                fileMetadata?.uploadedPercentage,
+                DelayBetweenDataSourceReadinessRetries);
+            await Task.Delay(DelayBetweenDataSourceReadinessRetries, cancellationToken);
+        }
     }
 
     private async Task CommitAllDataSetAsync(CancellationToken cancellationToken)

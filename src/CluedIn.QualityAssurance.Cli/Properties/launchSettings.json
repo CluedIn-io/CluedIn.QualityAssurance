@@ -52,7 +52,6 @@
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --use-short-test-id"
     },
-    },
     "Show Help": {
       "commandName": "Project",
       "commandLineArgs": ""

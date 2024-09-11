@@ -1,5 +1,7 @@
 ﻿using CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
 using Microsoft.Extensions.Logging;
+
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
@@ -17,7 +19,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     private List<string> ObservedQueueRegexes { get; } = new ()
     {
         @".*Messages.*\.(.*Command).*",
-        @"clue_(datasource)_process_(.*)",
+        @"^clue_(datasource)_process_([a-f\-0-9]{36})$",
         @"(Stream)Subscriber-(ingestion|connector)-(.*)",
     };
     private List<string> CriticalQueueRegexes { get; } = new ()
@@ -30,6 +32,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         @"(DeadLetterCommands)",
         @"(EasyNetQ_Default_Error_Queue)",
         @"(Stream)Subscriber-(deadLetter)-(.*)",
+        @"^clue_(datasource)_process_([a-f\-0-9]{36})_(.*)$",
     };
 
     private List<QueueChecker> AllQueueCheckers { get; set; } = new ();
@@ -111,7 +114,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                         Logger.LogDebug("Queue {QueueName} completed at {EndTime}", currentResult.CurrentQueueInfo.QueueName, currentResult.CompletedInfo?.PolledAt);
                     }
 
-                    var endTime = results.Where(result => result.CompletedInfo != null).Max(result => result.CompletedInfo.PolledAt);
+                    var endTime = results.Where(result => result.CompletedInfo != null).Max(result => result.CompletedInfo?.PolledAt).GetValueOrDefault();
                     var pollingHistoryWithActivity = AllQueueCheckers
                         .Where(checker => checker.HistoricalQueueInfo.Select(info => info.Published).Distinct().Count() > 1);
 
@@ -125,8 +128,14 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 if (shouldShowLog)
                 {
                     Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Processing is NOT YET completed.");
+                    var pendingQueues = results
+                        .Where(current => !current.IsComplete)
+                        .Select(current => new PendingQueue(current.ShortQueueName.Trim(), current.CurrentQueueInfo.Messages.Count))
+                        .ToList();
+                    Logger.LogDebug("IncompleteQueues {IncompleteQueues}", CreatePendingQueueConsoleTable(pendingQueues));
                     lastShowProgressTime = utcNow;
                 }
+                
                 totalConsecutiveErrors = 0;
             } 
             catch (Exception ex)
@@ -147,12 +156,41 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                         "Tolerating error polling because number of consecutive errors ({TotalConsecutiveErrors}) is below threshold {MaximumumConsecutivePollErrors}", 
                         totalConsecutiveErrors,
                         MaximumConsecutivePollErrors);
-
                 }
             }
 
             await Task.Delay(DelayBetweenQueuePolls).ConfigureAwait(false);
         }
+    }
+
+    private record PendingQueue(string Name, uint Count);
+
+    private string CreatePendingQueueConsoleTable(IEnumerable<PendingQueue> pendingQueues)
+    {
+        var namelength = nameof(PendingQueue.Name).Length;
+        var countlength = nameof(PendingQueue.Count).Length;
+        var maxNameLength = Math.Max(namelength ,pendingQueues.Max(queue => queue.Name.Length));
+        var maxCountLength = Math.Max(countlength, pendingQueues.Max(queue => queue.Count.ToString().Length));
+
+        var nameColumnWidth = maxNameLength + 2;
+        var countColumnWidth = maxCountLength + 2;
+        var totalColumns = 2;
+        var totalBorders = totalColumns + 1;
+
+        var builder = new StringBuilder();
+        var separatorLine = new string('-', nameColumnWidth + countColumnWidth + totalBorders);
+
+        builder.AppendLine();
+        builder.AppendLine(separatorLine);
+        builder.AppendLine($"| {nameof(PendingQueue.Name).PadLeft(maxNameLength)} | {nameof(PendingQueue.Count).PadLeft(maxCountLength)} |");
+        builder.AppendLine(separatorLine);
+
+        foreach (var queue in pendingQueues)
+        {
+            builder.AppendLine($"| {queue.Name.PadLeft(maxNameLength)} | {queue.Count.ToString().PadLeft(maxCountLength)} |");
+        }
+        builder.AppendLine(separatorLine);
+        return builder.ToString();
     }
 
     private void AddForceIncludeQueues(Dictionary<string, QueuePollingHistory> queuePollingHistory)
@@ -168,11 +206,11 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         }
     }
 
-    private async Task<List<(QueueInfo CurrentQueueInfo, bool IsComplete, QueueInfo CompletedInfo, List<QueueInfo> HistoricalQueueInfo)>> PopulateQueueInformation(CancellationToken cancellationToken)
+    private async Task<List<QueueCheckerResult>> PopulateQueueInformation(CancellationToken cancellationToken)
     {
         var allQueueInfo = await RabbitMQService.GetRabbitAllQueueInfoAsync(cancellationToken).ConfigureAwait(false);
 
-        var results = new List<(QueueInfo CurrentQueueInfo, bool IsComplete, QueueInfo CompletedInfo, List<QueueInfo> HistoricalQueueInfo)>();
+        var results = new List<QueueCheckerResult>();
         foreach (var currentQueueInfo in allQueueInfo)
         {
             var queueName = currentQueueInfo.QueueName;
@@ -277,7 +315,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         {
         }
 
-        public (QueueInfo CurrentQueueInfo, bool IsComplete, QueueInfo CompletedInfo, List<QueueInfo> HistoricalQueueInfo) AddCurrentInfo(QueueInfo currentInfo)
+        public QueueCheckerResult AddCurrentInfo(QueueInfo currentInfo)
         {
             AddHistoricalQueueInfo(currentInfo);
             if (SampledQueueInfo.Count >= totalSamples)
@@ -298,12 +336,11 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 isComplete = !hasNewMessages && SampledQueueInfo.All(info => IsIdleQueue(info));
             }
 
-            Logger.LogDebug(
+            Logger.LogTrace(
                 "Queue Status, Name: {Name} Count: {Count}  IsComplete {IsComplete}",
                 ShortQueueName,
                 currentInfo.Messages.Count,
                 isComplete);
-
 
             QueueInfo? completedInfo = null;
             if (isComplete)
@@ -320,7 +357,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 }
             }
 
-            return (currentInfo, isComplete, completedInfo, HistoricalQueueInfo);
+            return new (QueueName, ShortQueueName, currentInfo, isComplete, completedInfo, HistoricalQueueInfo);
 
             static bool IsIdleQueue(QueueInfo info)
             {
@@ -333,4 +370,12 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
             }
         }
     }
+
+    private record QueueCheckerResult(
+        string QueueName,
+        string ShortQueueName,
+        QueueInfo CurrentQueueInfo,
+        bool IsComplete,
+        QueueInfo? CompletedInfo,
+        List<QueueInfo> HistoricalQueueInfo);
 }
