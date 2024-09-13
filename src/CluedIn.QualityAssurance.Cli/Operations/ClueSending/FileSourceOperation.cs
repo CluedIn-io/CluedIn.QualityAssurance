@@ -535,19 +535,8 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
 
     private async Task<(string json, IEnumerable<GraphQLError> Errors)> GetEntityTypeInfoAsync(string entityType, bool withPageTemplate, CancellationToken cancellationToken)
     {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var suffix = withPageTemplate ? "WithPageTemplate" : "WithoutPageTemplate";
-        var body = await GetRequestTemplateAsync($"{nameof(GetEntityTypeInfoAsync)}.{suffix}").ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{EntityType}}", entityType);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true, throwIfNotSuccessCode: false).ConfigureAwait(false);
+        var body = RequestTemplates.GetEntityTypeInfoAsync(entityType, withPageTemplate);
+        var response = await SendGraphQlRequestAsync(body, cancellationToken, requireAuthorization: true, throwIfNotSuccessCode: false).ConfigureAwait(false);
 
         return await GetJsonResponse(response, GetSerializerOptions());
     }
@@ -884,18 +873,9 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
 
     protected async Task<List<(Guid KeyId, string Name)>> GetVocabularyKeysFromVocabularyIdAsync(Guid vocabularyId, CancellationToken cancellationToken)
     {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
+        var body = RequestTemplates.GetVocabularyKeysFromVocabularyIdAsync(vocabularyId);
 
-        var body = await GetRequestTemplateAsync("GetVocabularyKeysFromVocabularyIdAsync").ConfigureAwait(false);
-        var replacedBody = body
-            .Replace("{{VocabularyId}}", vocabularyId.ToString());
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, requireAuthorization: true).ConfigureAwait(false);
+        var response = await SendGraphQlRequestAsync(body, cancellationToken, requireAuthorization: true).ConfigureAwait(false);
 
         var result = await response.Content
             .DeserializeToAnonymousTypeAsync(new

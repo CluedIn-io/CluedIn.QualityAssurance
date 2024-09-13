@@ -173,13 +173,14 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private string CreatePendingQueueConsoleTable(IEnumerable<PendingQueue> pendingQueues)
     {
-        var columnNames = new[] { nameof(PendingQueue.Name), nameof(PendingQueue.Count), nameof(PendingQueue.Rate), nameof(PendingQueue.EstimatedSecondsRemaining) };
+        var columnNames = new[] { nameof(PendingQueue.Name), nameof(PendingQueue.Count), nameof(PendingQueue.Rate), "ETA (s)" };
 
         var table = new Table(columnNames);
 
         foreach (var queue in pendingQueues)
         {
-            table.AddRow(new[] { queue.Name, queue.Count.ToString(), queue.Rate.ToString("0.00"), queue.EstimatedSecondsRemaining.ToString("0.00") });
+            var eta = queue.EstimatedSecondsRemaining < 0 ? Math.Abs(queue.EstimatedSecondsRemaining).ToString("0.00") : "N/A";
+            table.AddRow(new[] { queue.Name, queue.Count.ToString(), queue.Rate.ToString("0.00"), eta });
         }
 
         return table.GetOutput();

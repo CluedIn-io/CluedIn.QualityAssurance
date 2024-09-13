@@ -281,17 +281,8 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
 
     private async Task ModifyDataSetAutoSubmitAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var body = await GetRequestTemplateAsync(nameof(ModifyDataSetAutoSubmitAsync)).ConfigureAwait(false);
-        var replacedBody = body.Replace("{{DataSetId}}", fileSource.DataSetId.ToString());
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var body = RequestTemplates.ModifyDataSetAutoSubmitAsync(fileSource.DataSetId);
+        var response = await SendGraphQlRequestAsync(body, cancellationToken, requireAuthorization: true).ConfigureAwait(false);
     }
 
 

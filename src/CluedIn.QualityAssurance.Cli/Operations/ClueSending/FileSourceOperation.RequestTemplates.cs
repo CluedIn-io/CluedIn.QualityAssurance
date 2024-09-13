@@ -633,6 +633,51 @@ internal abstract partial class FileSourceOperation<TOptions>
             }
             """;
         }
+
+        public static string GetEntityTypeInfoAsync(
+            string entityType,
+            bool withPageTemplate)
+        {
+            #region Request
+            var requestStringWithoutPageTemplate = $$"""
+            query getEntityTypeInfo($type: String!) {              management {                getEntityTypeInfo(type: $type) {                  id                  icon                  displayName                  type                  route                  path                  active                  layoutConfiguration                  pageTemplateId                  __typename                }                __typename              }            }
+            """;
+            var requestStringWithPageTemplate = $$"""
+            query getEntityTypeInfo($type: String!) {              management {                getEntityTypeInfo(type: $type, includePageTemplate: false) {                  id                  icon                  displayName                  type                  route                  path                  active                  layoutConfiguration                  pageTemplateId                  __typename                }                __typename              }            }
+            """;
+            var requestString = withPageTemplate ? requestStringWithPageTemplate : requestStringWithoutPageTemplate;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "getEntityTypeInfo",
+              "variables": {
+                "type": "/{{entityType}}"
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string GetVocabularyKeysFromVocabularyIdAsync(Guid vocabularyId)
+        {
+            #region Request
+            var requestString = $$"""
+            query getVocabularyKeysFromVocabularyId($id: ID!, $searchName: String, $dataType: String, $classification: String, $filterIsObsolete: String) {              management {                id                vocabularyKeysFromVocabularyId(                  id: $id                  searchName: $searchName                  dataType: $dataType                  classification: $classification                  filterIsObsolete: $filterIsObsolete                ) {                  total                  data {                    ...VocabularyKey                    __typename                  }                  __typename                }                __typename              }            }            fragment VocabularyKey on VocabularyKey {              displayName              vocabularyKeyId              vocabularyId              name              isVisible              isCluedInCore              isDynamic              isProvider              isObsolete              groupName              key              storage              dataClassificationCode              dataType              description              dataAnnotationsIsPrimaryKey              dataAnnotationsIsEditable              dataAnnotationsIsNullable              dataAnnotationsIsRequired              dataAnnotationsMinimumLength              dataAnnotationsMaximumLength              providerId              compositeVocabularyId              compositeVocabulary {                name                displayName                dataType                __typename              }              mapsToOtherKeyId              glossaryTermId              createdAt              createdBy              mappedKey              isValueChangeInsignificant              connector {                id                name                about                icon                type                __typename              }              vocabulary {                vocabularyId                vocabularyName                connector {                  id                  name                  about                  icon                  __typename                }                __typename              }              author {                id                username                __typename              }              __typename            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "getVocabularyKeysFromVocabularyId",
+              "variables": {
+                "id": "{{vocabularyId}}",
+                "filterIsObsolete": "All"
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
     }
 }
 

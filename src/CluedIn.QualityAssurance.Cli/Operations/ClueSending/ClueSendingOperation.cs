@@ -466,7 +466,7 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
     }
 
-
+    [Obsolete("Use C# 11 Raw string literals (triple quotes)")]
     protected async Task<string> GetRequestTemplateAsync(string requestName)
     {
         var currentType = typeof(ClueSendingOperation<TOptions>);

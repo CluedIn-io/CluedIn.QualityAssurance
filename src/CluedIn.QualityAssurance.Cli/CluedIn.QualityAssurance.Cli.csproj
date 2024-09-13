@@ -10,7 +10,6 @@
 	</PropertyGroup>
 	<ItemGroup>
 	  <EmbeddedResource Include="Services\ResultWriters\Data\HtmlFileResultWriter\index.html" />
-	  <EmbeddedResource Include="Operations\ClueSending\Data\RequestTemplates\**" />
 	  <EmbeddedResource Include="Operations\ClueSending\Data\TestData\**" />
 	</ItemGroup>
 	<ItemGroup>

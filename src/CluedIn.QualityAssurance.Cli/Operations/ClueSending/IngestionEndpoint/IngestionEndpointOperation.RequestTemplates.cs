@@ -90,5 +90,30 @@ internal partial class IngestionEndpointOperation
             }
             """;
         }
+
+        public static string ModifyDataSetAutoSubmitAsync(Guid dataSetId)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation modifyDataSetAutoSubmit($dataSetId: ID!, $autoSubmit: Boolean) {
+              inbound {
+                modifyDataSetAutoSubmit(dataSetId: $dataSetId, autoSubmit: $autoSubmit)
+                __typename
+              }
+            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "modifyDataSetAutoSubmit",
+              "variables": {
+                "dataSetId": "{{dataSetId}}",
+                "autoSubmit": true
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
     }
 }
