@@ -17,6 +17,10 @@
             position: relative;
             display: block;
         }
+
+        .settingsPanel {
+            padding: 20px;
+        }
     </style>
     <div class="container-fluid">
         <div class="row">
@@ -28,11 +32,27 @@
                 <canvas id="runChart" style="width:100%;height:300px"></canvas>
             </div>
         </div>
+        <div class="row g-3 align-items-center settingsPanel">
+            <div class="col-auto">
+                <label for="numAveragePoints" class="form-label">Moving Average Mode</label>
+            </div>
+            <div class="col-auto">
+                <select id="numAveragePoints" class="form-select">
+                    <option value="1">1 (No Moving average)</option>
+                    <option value="3">3 points</option>
+                    <option value="5">5 points</option>
+                    <option value="10">10 points</option>
+                    <option value="20">20 points</option>
+                    <option value="50">50 points</option>
+                    <option value="100">100 points</option>
+                </select>
+            </div>
+        </div>
         <div class="row">
             <div class="col comparison-left">
                 <div class="row">
                     <div class="col">
-                        <select class="comparison-selection" data-comparison-side="Left">
+                        <select class="comparison-selection form-select" data-comparison-side="Left">
                         </select>
                     </div>
                 </div>
@@ -85,7 +105,7 @@
             <div class="col comparison-right">
                 <div class="row">
                     <div class="col">
-                        <select class="comparison-selection" data-comparison-side="Right">
+                        <select class="comparison-selection form-select" data-comparison-side="Right">
                         </select>
                     </div>
                 </div>
@@ -140,10 +160,10 @@
     <script>
         let resultData = [];
         
-        function getData() {			
+        function getData() {
             return resultData;
         }
-        
+
         function isBlobStorage() {
             const urlVars = getUrlVars();
             return window.location.href.includes(".blob.core.windows.net")
@@ -154,20 +174,18 @@
                 && urlVars["spr"]
                 && urlVars["sig"];
         }
-        
-        function getUrlVars()
-        {
+
+        function getUrlVars() {
             var vars = [], hash;
             var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
-            for(var i = 0; i < hashes.length; i++)
-            {
+            for (var i = 0; i < hashes.length; i++) {
                 hash = hashes[i].split('=');
                 vars.push(hash[0]);
                 vars[hash[0]] = hash[1];
             }
             return vars;
         }
-        
+
         function createRunChart() {
             const existingChart = Chart.getChart('runChart');
             var jsonData = getData();
@@ -197,7 +215,7 @@
                     }
                 }
             };
-            
+
             if (!existingChart) {
                 const myChart = new Chart(ctx, config);
             } else {
@@ -300,7 +318,6 @@
                 var currentMinDate = Date.now();
                 var pollingHistory = currentData.QueuePollingHistory;
 
-
                 for (var currentQueue of Object.keys(pollingHistory)) {
                     var firstValue = pollingHistory[currentQueue].HistoricalQueueInfo[0];
                     for (var currentValue of pollingHistory[currentQueue].HistoricalQueueInfo) {
@@ -328,6 +345,8 @@
                 minDates.push(currentMinDate);
             }
 
+            var numAveragePointsValue = parseInt(document.getElementById('numAveragePoints').value);
+            var isMovingAverage = numAveragePointsValue !== 1;
             for (var i = 0; i < dropdowns.length; ++i) {
                 var currentIndexes = $(dropdowns[i]).val().split("|");
                 var currentSetIndex = currentIndexes[0];
@@ -339,8 +358,11 @@
 
                 var pollingHistory = currentData.QueuePollingHistory;
                 var queueIndex = 0;
+                var previousValues = {};
+                var previousValuesTotal = {};
                 for (var currentQueue of Object.keys(pollingHistory)) {
-
+                    previousValues[currentQueue] = {};
+                    previousValuesTotal[currentQueue] = {};
                     for (var sideChart of sideCharts) {
                         sideChart.datasets[i].push({
                             label: pollingHistory[currentQueue].QueueShortName,
@@ -351,13 +373,32 @@
                             maintainAspectRatio: false,
                             data: []
                         });
+                        previousValues[currentQueue][sideChart.idPrefix] = [];
+                        previousValuesTotal[currentQueue][sideChart.idPrefix] = 0;
                     }
 
                     var firstValue = pollingHistory[currentQueue].HistoricalQueueInfo[0];
                     for (var currentValue of pollingHistory[currentQueue].HistoricalQueueInfo) {
                         var xValue = ((new Date(currentValue.PolledAt) - minDates[i]) / 1000);
                         for (var sideChart of sideCharts) {
-                            sideChart.datasets[i][queueIndex].data.push({ x: xValue, y: sideChart.getValueMethod(currentValue, firstValue) });
+                            var yValue = sideChart.getValueMethod(currentValue, firstValue);
+                            if (isMovingAverage) {
+                                previousValues[currentQueue][sideChart.idPrefix].push(yValue);
+                                previousValuesTotal[currentQueue][sideChart.idPrefix] += yValue;
+                                if (previousValues[currentQueue][sideChart.idPrefix].length == numAveragePointsValue) {
+                                    sideChart.datasets[i][queueIndex].data.push({
+                                        x: xValue,
+                                        y: (previousValuesTotal[currentQueue][sideChart.idPrefix] / numAveragePointsValue)
+                                    });
+                                    var firstPreviousValue = previousValues[currentQueue][sideChart.idPrefix].shift();
+                                    previousValuesTotal[currentQueue][sideChart.idPrefix] -= firstPreviousValue;
+                                }
+                            } else {
+                                sideChart.datasets[i][queueIndex].data.push({
+                                    x: xValue,
+                                    y: yValue
+                                });
+                            }
                         }
                     }
 
@@ -377,7 +418,6 @@
                         datasets: sideChart.datasets[i]
                     });
                 }
-
             }
         }
 
@@ -462,22 +502,22 @@
 
             createQueueSideCharts(sideCharts);
         }
-        
+
         function getBaseUrl() {
             const urlWithoutQueryString = window.location.href.split('?')[0];
-            return urlWithoutQueryString.includes("index.html") 
-                ? urlWithoutQueryString.substring(0, urlWithoutQueryString.length - "index.html".length) 
+            return urlWithoutQueryString.includes("index.html")
+                ? urlWithoutQueryString.substring(0, urlWithoutQueryString.length - "index.html".length)
                 : urlWithoutQueryString;
         }
-        
+
         function populateFolderSelector() {
             const baseUrl = getBaseUrl();
             const urlVars = getUrlVars();
             const queryString = location.search + "&restype=container&comp=list&delimiter=/"
             const url = `${baseUrl}${queryString}`
-            return $.get( url, function( data ) {					
+            return $.get(url, function (data) {
                 const xml = $(data);
-                const prefixes = xml.find("BlobPrefix").find("Name").each(function() {
+                const prefixes = xml.find("BlobPrefix").find("Name").each(function () {
                     const nameWithDelimiter = $(this).text();
                     const name = nameWithDelimiter.substring(0, nameWithDelimiter.length - 1);
                     $("#folder-selector").append($('<option>', {
@@ -485,40 +525,43 @@
                         text: name
                     }));
                 });
-                
+
                 if (urlVars["folder"]) {
                     $("#folder-selector").val(urlVars["folder"]);
                 }
             });
         }
-        
-        $(function () {			
+
+        $(function () {
             $(".comparison-selection").change(function () {
                 createMessageCharts();
             });
-            
-            if (!isBlobStorage()){
+            $("#numAveragePoints").change(function () {
+                createMessageCharts();
+            });
+
+            if (!isBlobStorage()) {
                 $("#folder-selector").hide();
                 createRunChart();
                 populateComparisonSelectors();
                 createMessageCharts();
             } else {
-                populateFolderSelector().then(function() {
+                populateFolderSelector().then(function () {
                     $("#folder-selector").show().change(function () {
                         const folder = $("#folder-selector").val();
                         const baseUrl = getBaseUrl();
-                        const url = `${baseUrl}${location.search}&restype=container&comp=list&prefix=${folder}`; 
+                        const url = `${baseUrl}${location.search}&restype=container&comp=list&prefix=${folder}`;
                         $.get(url)
-                            .then(function(data) {
+                            .then(function (data) {
                                 const names = $(data).find("Blob").find("Name");
                                 let getResultPromises = [];
-                                
-                                names.each(function() {
-                                    const resultFilesUrl = `${baseUrl}${$(this).text()}${location.search}`; 
+
+                                names.each(function () {
+                                    const resultFilesUrl = `${baseUrl}${$(this).text()}${location.search}`;
                                     getResultPromises.push($.get(resultFilesUrl).then(currentResultData => JSON.parse(currentResultData)));
                                 });
-                                
-                                return Promise.all(getResultPromises).then(function(allData) {
+
+                                return Promise.all(getResultPromises).then(function (allData) {
                                     resultData = allData;
                                     createRunChart();
                                     populateComparisonSelectors();
@@ -529,7 +572,6 @@
                 });
             }
         });
-
     </script>
 </body>
 </html>

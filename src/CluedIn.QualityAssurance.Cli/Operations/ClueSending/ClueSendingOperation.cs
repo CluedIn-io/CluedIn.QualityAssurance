@@ -6,12 +6,15 @@ using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Text;
+using System.Threading;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
 internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationOperation<TOptions, MultiIterationOperationResult, SingleIterationOperationResult>
     where TOptions : IClueSendingOperationOptions
 {
+    protected const string ApplicationJsonContentType = "application/json";
     private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(1);
 
     public ClueSendingOperation(
@@ -376,6 +379,31 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
     private void AddAuthorizationHeader(HttpRequestMessage requestMessage)
     {
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Organization.AccessToken);
+    }
+
+    protected async Task<HttpResponseMessage> SendGraphQlRequestAsync(
+        string body,
+        CancellationToken cancellationToken,
+        bool requireAuthorization = false,
+        Action<HttpClient>? configureClient = null,
+        bool suppressDebug = false,
+        bool throwIfNotSuccessCode = true)
+    {
+        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
+        var requestUri = serverUris.UiGraphqlUri;
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = new StringContent(body, Encoding.UTF8, ApplicationJsonContentType),
+        };
+
+        return await SendRequestAsync(
+            requestMessage,
+            cancellationToken,
+            requireAuthorization: requireAuthorization,
+            configureClient: configureClient,
+            suppressDebug: suppressDebug,
+            throwIfNotSuccessCode: throwIfNotSuccessCode)
+            .ConfigureAwait(false);
     }
 
     protected async Task<HttpResponseMessage> SendRequestAsync(

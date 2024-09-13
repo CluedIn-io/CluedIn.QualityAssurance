@@ -130,7 +130,10 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                     Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Processing is NOT YET completed.");
                     var pendingQueues = results
                         .Where(current => !current.IsComplete)
-                        .Select(current => new PendingQueue(current.ShortQueueName.Trim(), current.CurrentQueueInfo.Messages.Count))
+                        .Select(current => new PendingQueue(
+                            current.ShortQueueName.Trim(),
+                            current.CurrentQueueInfo.Messages.Count,
+                            current.CurrentQueueInfo.Messages.Rate))
                         .ToList();
                     Logger.LogDebug("IncompleteQueues {IncompleteQueues}", CreatePendingQueueConsoleTable(pendingQueues));
                     lastShowProgressTime = utcNow;
@@ -163,34 +166,23 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         }
     }
 
-    private record PendingQueue(string Name, uint Count);
+    private record PendingQueue(string Name, uint Count, double Rate)
+    {
+        public double EstimatedSecondsRemaining => Rate == 0.0 ? 0 : Count / Rate;
+    }
 
     private string CreatePendingQueueConsoleTable(IEnumerable<PendingQueue> pendingQueues)
     {
-        var namelength = nameof(PendingQueue.Name).Length;
-        var countlength = nameof(PendingQueue.Count).Length;
-        var maxNameLength = Math.Max(namelength ,pendingQueues.Max(queue => queue.Name.Length));
-        var maxCountLength = Math.Max(countlength, pendingQueues.Max(queue => queue.Count.ToString().Length));
+        var columnNames = new[] { nameof(PendingQueue.Name), nameof(PendingQueue.Count), nameof(PendingQueue.Rate), nameof(PendingQueue.EstimatedSecondsRemaining) };
 
-        var nameColumnWidth = maxNameLength + 2;
-        var countColumnWidth = maxCountLength + 2;
-        var totalColumns = 2;
-        var totalBorders = totalColumns + 1;
-
-        var builder = new StringBuilder();
-        var separatorLine = new string('-', nameColumnWidth + countColumnWidth + totalBorders);
-
-        builder.AppendLine();
-        builder.AppendLine(separatorLine);
-        builder.AppendLine($"| {nameof(PendingQueue.Name).PadLeft(maxNameLength)} | {nameof(PendingQueue.Count).PadLeft(maxCountLength)} |");
-        builder.AppendLine(separatorLine);
+        var table = new Table(columnNames);
 
         foreach (var queue in pendingQueues)
         {
-            builder.AppendLine($"| {queue.Name.PadLeft(maxNameLength)} | {queue.Count.ToString().PadLeft(maxCountLength)} |");
+            table.AddRow(new[] { queue.Name, queue.Count.ToString(), queue.Rate.ToString("0.00"), queue.EstimatedSecondsRemaining.ToString("0.00") });
         }
-        builder.AppendLine(separatorLine);
-        return builder.ToString();
+
+        return table.GetOutput();
     }
 
     private void AddForceIncludeQueues(Dictionary<string, QueuePollingHistory> queuePollingHistory)
@@ -378,4 +370,56 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         bool IsComplete,
         QueueInfo? CompletedInfo,
         List<QueueInfo> HistoricalQueueInfo);
+
+    private class Table
+    {
+        private List<string> ColumnNames { get; }
+        private List<List<string>> Rows { get; set; } = new List<List<string>>();
+        public Table(IEnumerable<string> columnNames)
+        {
+            ColumnNames = columnNames?.ToList() ?? new List<string>();
+        }
+
+        public void AddRow(IEnumerable<string> values)
+        {
+            var row = values?.ToList() ?? new List<string>();
+            if (row.Count != ColumnNames.Count)
+            {
+                throw new InvalidOperationException("Column count must be the same as number of columns specified in header.");
+            }
+
+            Rows.Add(row);
+        }
+
+        public string GetOutput()
+        {
+            var columnWidth = ColumnNames.Select(column => column.Length).ToList();
+            var totalColumns = ColumnNames.Count;
+            var totalBorders = totalColumns + 1;
+
+            foreach (var row in Rows)
+            {
+                for (var col = 0; col < row.Count; ++col)
+                {
+                    columnWidth[col] = Math.Max(columnWidth[col], row[col].Length);
+                }
+            }
+
+            var totalColumnWidthWithSpaces = columnWidth.Sum() + columnWidth.Count * 2;
+            var builder = new StringBuilder();
+            var separatorLine = new string('-', totalColumnWidthWithSpaces + totalBorders);
+
+            builder.AppendLine();
+            builder.AppendLine(separatorLine);
+            builder.AppendLine($"|{string.Join("|", ColumnNames.Select((name, index) => $" {name.PadLeft(columnWidth[index])} "))}|");
+            builder.AppendLine(separatorLine);
+
+            foreach (var row in Rows)
+            {
+                builder.AppendLine($"|{string.Join("|", row.Select((col, index) => $" {col.PadLeft(columnWidth[index])} "))}|");
+            }
+            builder.AppendLine(separatorLine);
+            return builder.ToString();
+        }
+    }
 }

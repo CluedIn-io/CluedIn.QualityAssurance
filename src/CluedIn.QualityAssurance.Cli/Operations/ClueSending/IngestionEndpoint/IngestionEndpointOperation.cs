@@ -206,18 +206,10 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
 
     private async Task CreateDataSourceAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var replacedBody = RequestTemplates.CreateDataSourceAsync(
+        var body = RequestTemplates.CreateDataSourceAsync(
             dataSourceSetId: fileSource.DataSourceSetId,
             userId: Organization.UserId);
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var response = await SendGraphQlRequestAsync(body, cancellationToken, requireAuthorization: true).ConfigureAwait(false);
 
         var result = await response.Content
             .DeserializeToAnonymousTypeAsync(new
@@ -242,19 +234,11 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
 
     private async Task CreateDataSetAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
-        var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-        var requestUri = serverUris.UiGraphqlUri;
-
-        var replacedBody = RequestTemplates.CreateDataSetAsync(
+        var body = RequestTemplates.CreateDataSetAsync(
             dataSourceId: fileSource.DataSourceId,
             userId: Organization.UserId,
             entityType: fileSource.EntityType + "Dummy");
-
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = new StringContent(replacedBody, Encoding.UTF8, ApplicationJsonContentType),
-        };
-        var response = await SendRequestAsync(requestMessage, cancellationToken, true).ConfigureAwait(false);
+        var response = await SendGraphQlRequestAsync(body, cancellationToken, requireAuthorization: true).ConfigureAwait(false);
 
         var result = await response.Content
             .DeserializeToAnonymousTypeAsync(new

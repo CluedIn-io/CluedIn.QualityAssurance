@@ -42,11 +42,11 @@
     },
     "Directory File Upload Local": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
+      "commandLineArgs": "file-upload --local -n 1 -t 20 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
     },
     "Directory File Upload Kubernetes": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --kubeconfig-path \"D:\\kubeconfig\\testblobstore.kube.config\" --server-url \"https://app.52.164.206.51.sslip.io/\" --milliseconds-after-vocabulary-key-creation 837 --kubernetes --context-name \"aks-kte6aieghijw2\" --namespace \"cluedin\" -n 3 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
+      "commandLineArgs": "file-upload --kubernetes -n 5 -t 20 --server-url \"https://app.52.164.206.51.sslip.io/\" --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --context-name \"aks-kte6aieghijw2\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\testblobstore.kube.config\" --milliseconds-after-vocabulary-key-creation 837 --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-level Debug --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
     },
     "Directory Ingestion Endpoint Local": {
       "commandName": "Project",

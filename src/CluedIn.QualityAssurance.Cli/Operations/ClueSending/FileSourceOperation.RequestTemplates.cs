@@ -543,6 +543,96 @@ internal abstract partial class FileSourceOperation<TOptions>
             }
             """;
         }
+
+        public static string GetAllVocabulariesAsync(
+            string vocabularyName)
+        {
+            #region Request
+            var requestString = $$"""
+            query getAllVocabularies($searchName: String, $isActive: Boolean, $pageNumber: Int, $pageSize: Int, $sortBy: String, $sortDirection: String, $entityType: String, $connectorId: ID, $filterTypes: Int, $filterHasNoSource: Boolean) {              management {                id                vocabularies(                  searchName: $searchName                  isActive: $isActive                  pageNumber: $pageNumber                  pageSize: $pageSize                  sortBy: $sortBy                  sortDirection: $sortDirection                  entityType: $entityType                  connectorId: $connectorId                  filterTypes: $filterTypes                  filterHasNoSource: $filterHasNoSource                ) {                  total                  data {                    vocabularyId                    vocabularyName                    keyPrefix                    isCluedInCore                    isDynamic                    isProvider                    isActive                    grouping                    createdAt                    connector {                      id                      name                      about                      icon                      __typename                    }                    __typename                  }                  __typename                }                __typename              }            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "getAllVocabularies",
+              "variables": {
+                "searchName": "{{vocabularyName}}",
+                "pageNumber": 1,
+                "pageSize": 100,
+                "entityType": null,
+                "connectorId": null,
+                "isActive": null,
+                "filterTypes": null,
+                "filterHasNoSource": null
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string CreateVocabularyAsync(
+            string vocabularyName,
+            string entityType)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation createVocabulary($vocabulary: InputVocabulary) {              management {                id                createVocabulary(vocabulary: $vocabulary) {                  ...Vocabulary                  __typename                }                __typename              }            }            fragment Vocabulary on Vocabulary {              vocabularyId              vocabularyName              keyPrefix              isCluedInCore              entityTypeConfiguration {                icon                entityType                displayName                __typename              }              isDynamic              isProvider              isActive              grouping              createdAt              providerId              description              connector {                id                name                about                icon                __typename              }              __typename            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createVocabulary",
+              "variables": {
+                "vocabulary": {
+                  "vocabularyName": "{{vocabularyName}}",
+                  "entityTypeConfiguration": {
+                    "icon": "Twitter",
+                    "new": false,
+                    "displayName": "{{entityType}}",
+                    "entityType": "/{{entityType}}"
+                  },
+                  "providerId": "",
+                  "keyPrefix": "{{vocabularyName}}",
+                  "description": ""
+                }
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
+
+        public static string CreateVocabularyKeyAsync(
+            Guid vocabularyId,
+            string vocabularyKeyName,
+            string vocabularyKeyGroup,
+            string vocabularyKeyType)
+        {
+            #region Request
+            var requestString = $$"""
+            mutation createVocabulary($vocabularyKey: InputVocabularyKey) {              management {                id                createVocabularyKey(vocabularyKey: $vocabularyKey) {                  ...VocabularyKey                  __typename                }                __typename              }            }            fragment VocabularyKey on VocabularyKey {              displayName              vocabularyKeyId              vocabularyId              name              isVisible              isCluedInCore              isDynamic              isProvider              isObsolete              groupName              key              storage              dataClassificationCode              dataType              description              dataAnnotationsIsPrimaryKey              dataAnnotationsIsEditable              dataAnnotationsIsNullable              dataAnnotationsIsRequired              dataAnnotationsMinimumLength              dataAnnotationsMaximumLength              providerId              compositeVocabularyId              compositeVocabulary {                name                displayName                dataType                __typename              }              mapsToOtherKeyId              glossaryTermId              createdAt              createdBy              mappedKey              isValueChangeInsignificant              connector {                id                name                about                icon                type                __typename              }              vocabulary {                vocabularyId                vocabularyName                connector {                  id                  name                  about                  icon                  __typename                }                __typename              }              author {                id                username                __typename              }              __typename            }
+            """;
+            #endregion
+
+            return $$"""
+            {
+              "operationName": "createVocabulary",
+              "variables": {
+                "vocabularyKey": {
+                  "vocabularyId": "{{vocabularyId}}",
+                  "displayName": "{{vocabularyKeyName}}",
+                  "name": "{{vocabularyKeyName}}",
+                  "groupName": "{{vocabularyKeyGroup}}",
+                  "isVisible": true,
+                  "dataType": "{{vocabularyKeyType}}",
+                  "description": ""
+                }
+              },
+              "query": {{GraphqlQueryHelper.Serialize(requestString)}}
+            }
+            """;
+        }
     }
 }
 
