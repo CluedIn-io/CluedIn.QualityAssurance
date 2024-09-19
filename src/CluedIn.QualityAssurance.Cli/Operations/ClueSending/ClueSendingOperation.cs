@@ -182,15 +182,18 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 
         await CompletionChecker.InitializeAsync(cancellationToken).ConfigureAwait(false);
         result.StartTime = DateTimeOffset.UtcNow;
+
+        using var ingestionCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes), cancellationToken);
-        var completionCheckerTask = CompletionChecker.PollForCompletionAsync(cancellationToken);
-        var testRunTask = Task.WhenAll(ExecuteIngestionAsync(cancellationToken), completionCheckerTask);
+        var completionCheckerTask = CompletionChecker.PollForCompletionAsync(ingestionCancellationTokenSource.Token);
+        var testRunTask = Task.WhenAll(ExecuteIngestionAsync(ingestionCancellationTokenSource.Token), completionCheckerTask);
 
         if (await Task.WhenAny(timeoutTask, testRunTask).ConfigureAwait(false) == timeoutTask)
         {
             result.HasTimedOut = true;
             result.EndTime = DateTimeOffset.UtcNow;
             Logger.LogWarning("Time out waiting for completion.");
+            await ingestionCancellationTokenSource.CancelAsync();
         }
         else
         {
