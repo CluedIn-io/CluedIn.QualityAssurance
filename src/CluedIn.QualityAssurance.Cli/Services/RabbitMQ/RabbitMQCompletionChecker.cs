@@ -127,7 +127,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
                 if (shouldShowLog)
                 {
-                    Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Processing is NOT YET completed.");
+                    var elapsed = utcNow - startTime;
                     var pendingQueues = results
                         .Where(current => !current.IsComplete)
                         .Select(current => new PendingQueue(
@@ -135,7 +135,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                             current.CurrentQueueInfo.Messages.Count,
                             current.CurrentQueueInfo.Messages.Rate))
                         .ToList();
-                    Logger.LogDebug("IncompleteQueues {IncompleteQueues}", CreatePendingQueueConsoleTable(pendingQueues));
+                    Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Elapsed: {Elapsed}. Incomplete Queues {IncompleteQueues}", elapsed, CreatePendingQueueConsoleTable(pendingQueues));
                     lastShowProgressTime = utcNow;
                 }
                 
