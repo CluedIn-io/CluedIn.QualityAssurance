@@ -18,6 +18,7 @@ internal class LocalEnvironment : IEnvironment
     }
 
     private ILogger<LocalEnvironment> Logger { get; }
+    private bool HasShownProbeNotSupportedWarning { get; set; }
     private IOptions<ILocalEnvironmentOptions> Options { get; }
 
     public Task SetupAsync(CancellationToken cancellationToken)
@@ -53,6 +54,17 @@ internal class LocalEnvironment : IEnvironment
         var availableMemory = performance.NextValue();
         Logger.LogInformation("End getting available memory is {AvailableMemoryInMegabytes}", availableMemory);
         return Task.FromResult(availableMemory);
+    }
+
+    public Task<ProbeResult> ProbeAsync(CancellationToken cancellationToken)
+    {
+        if (HasShownProbeNotSupportedWarning)
+        {
+            Logger.LogWarning("Probe is not implemented yet.");
+            HasShownProbeNotSupportedWarning = true;
+        }
+
+        return Task.FromResult(new ProbeResult(DateTimeOffset.UtcNow, Array.Empty<ItemProbeResult>()));
     }
 
     public Task<RabbitMQConnectionInfo> GetRabbitMQConnectionInfoAsync(CancellationToken cancellationToken)

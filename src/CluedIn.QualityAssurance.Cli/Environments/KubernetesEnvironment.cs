@@ -40,6 +40,112 @@ internal class KubernetesEnvironment : IEnvironment
         return Task.FromResult(-1.0f);
     }
 
+    public async Task<ProbeResult> ProbeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var podProbeResults = await GetPodsProbeResults(cancellationToken).ConfigureAwait(false);
+            var nodeProbeResults = await GetNodesProbeResults(cancellationToken).ConfigureAwait(false);
+
+            var itemProbeResults = podProbeResults.Concat(nodeProbeResults);
+            return new ProbeResult(DateTimeOffset.UtcNow, itemProbeResults);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to probe cluster.");
+            return new ProbeResult(DateTimeOffset.UtcNow, Array.Empty<ItemProbeResult>());
+        }
+    }
+
+    private async Task<List<ItemProbeResult>> GetPodsProbeResults(CancellationToken cancellationToken)
+    {
+        var runner = new KubectlRunner();
+        var arguments = new string[]
+        {
+            "top",
+            "pod",
+            "--no-headers=true"
+        };
+        var result = await runner.RunAsync(
+            Directory.GetCurrentDirectory(),
+            AppendEnvironmentDetails(arguments),
+            cancellationToken).ConfigureAwait(false);
+
+        var lines = result.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var itemProbeResults = new List<ItemProbeResult>();
+        foreach (var line in lines)
+        {
+            var split = line.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+            if (split.Length == 3)
+            {
+                var itemName = split[0];
+                var cpuPart = split[1];
+                var memoryPart = split[2];
+                var cpuValue = cpuPart.EndsWith('m') ? cpuPart[..^1] : string.Empty;
+                var memoryValue = memoryPart.EndsWith("Mi") ? memoryPart[..^2] : string.Empty;
+
+                var cpu = int.TryParse(cpuValue, out var cpuTemp) ? cpuTemp : -1;
+                var memory = int.TryParse(memoryValue, out var memoryTemp) ? memoryTemp : -1;
+                itemProbeResults.Add(new ItemProbeResult(itemName, cpu / 1000.0, memory));
+            }
+        }
+        var excludePodNamePrefixes = new HashSet<string> {
+            "alertmanager-cluedin",
+            "cluedin-cert-manager",
+            "cluedin-controller",
+            "cluedin-grafana",
+            "cluedin-haproxy",
+            "cluedin-kube",
+            "cluedin-libpostal",
+            "cluedin-openrefine",
+            "cluedin-operator",
+            "cluedin-prometheus",
+            "prometheus-cluedin",
+        };
+        return itemProbeResults.Where(item => !excludePodNamePrefixes.Any(prefix => item.ItemName.StartsWith(prefix))).ToList();
+    }
+    private async Task<List<ItemProbeResult>> GetNodesProbeResults(CancellationToken cancellationToken)
+    {
+        var runner = new KubectlRunner();
+        var arguments = new string[]
+        {
+            "top",
+            "node",
+            "--no-headers=true"
+        };
+        var result = await runner.RunAsync(
+            Directory.GetCurrentDirectory(),
+            AppendEnvironmentDetails(arguments),
+            cancellationToken).ConfigureAwait(false);
+
+        var lines = result.Output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var itemProbeResults = new List<ItemProbeResult>();
+        foreach (var line in lines)
+        {
+            var split = line.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
+            if (split.Length == 5)
+            {
+                var itemName = split[0];
+                var cpuPart = split[1];
+                var cpuPercentPart = split[2];
+                var memoryPart = split[3];
+                var memoryPercentPart = split[4];
+                var cpuValue = cpuPart.EndsWith('m') ? cpuPart[..^1] : string.Empty;
+                var cpuPercentValue = cpuPart.EndsWith('%') ? cpuPercentPart[..^1] : string.Empty;
+                var memoryValue = memoryPart.EndsWith("Mi") ? memoryPart[..^2] : string.Empty;
+                var memoryPercentValue = memoryPercentPart.EndsWith('%') ? memoryPercentPart[..^1] : string.Empty;
+
+                var cpu = int.TryParse(cpuValue, out var cpuTemp) ? cpuTemp : -1;
+                var cpuPercent = int.TryParse(cpuPercentValue, out var cpuPercentTemp) ? cpuPercentTemp : -1;
+                var memory = int.TryParse(memoryValue, out var memoryTemp) ? memoryTemp : -1;
+                var memoryPercent = int.TryParse(memoryPercentValue, out var memoryPercentTemp) ? memoryPercentTemp : -1;
+                itemProbeResults.Add(new ItemProbeResult(itemName, cpu / 1000.0, memory, cpuPercent, memoryPercent));
+            }
+        }
+
+        return itemProbeResults;
+    }
+
     private async Task<T> GetOrCreateConnectionInfoAsync<T>(string name, Func<string, string, PortForwardResult, T> createConnectionInfoFunc, CancellationToken cancellationToken)
         where T : class
     {
@@ -100,7 +206,7 @@ internal class KubernetesEnvironment : IEnvironment
     public async Task SetupAsync(CancellationToken cancellationToken)
     {
         Logger.LogInformation("Setting up kubernetes environment for testing.");
-        Connections.Clear();
+        KIllProcessses();
 
         _ = await GetOrCreateConnectionInfoAsync(
             nameof(RabbitMQConnectionInfo),
@@ -232,11 +338,31 @@ internal class KubernetesEnvironment : IEnvironment
 
     public Task TearDownAsync(CancellationToken cancellationToken)
     {
-        foreach (var connection in Connections)
-        {
-            connection.Value.Process.Kill(true);
-        }
+        KIllProcessses();
         return Task.CompletedTask;
+    }
+
+    private void KIllProcessses()
+    {
+        try
+        {
+            foreach (var connection in Connections)
+            {
+                try
+                {
+                    connection.Value?.Process?.Kill(true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to kill process.");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.LogWarning(e, "Failed to kill processes.");
+        }
+        Connections.Clear();
     }
 
     public Task<ServerUriCollection> GetServerUriCollectionAsync(CancellationToken cancellationToken)

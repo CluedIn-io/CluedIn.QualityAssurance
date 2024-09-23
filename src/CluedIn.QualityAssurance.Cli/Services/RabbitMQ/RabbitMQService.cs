@@ -7,7 +7,7 @@ using System.Net.Sockets;
 
 namespace CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 
-internal class RabbitMQService
+internal class RabbitMQService : IRabbitMQService
 {
     public RabbitMQService(ILogger<RabbitMQService> logger, IHttpClientFactory httpClientFactory, IEnvironment testEnvironment)
     {
@@ -35,6 +35,31 @@ internal class RabbitMQService
             vhost = "/",
             name = queueName,
             mode = "purge",
+        };
+        var request = new HttpRequestMessage(HttpMethod.Delete, uri)
+        {
+            Content = JsonContent.Create(payload),
+        };
+
+        var authenticationString = $"{connectionInfo.UserName}:{connectionInfo.Password}";
+        var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.UTF8.GetBytes(authenticationString));
+        request.Headers.Add("Authorization", "Basic " + base64EncodedAuthenticationString);
+
+        var client = HttpClientFactory.CreateClient(Constants.AllowUntrustedSSLClient);
+        var response = await client.SendAsync(request).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DeleteQueueAsync(string queueName, CancellationToken cancellationToken)
+    {
+        var connectionInfo = await GetRabbitMqConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+        Logger.LogInformation("Deleting queue '{QueueName}'.", queueName);
+        var uri = new Uri(connectionInfo.ManagementUri, $"api/queues/%2F/{queueName}");
+        var payload = new
+        {
+            vhost = "/",
+            name = queueName,
+            mode = "delete",
         };
         var request = new HttpRequestMessage(HttpMethod.Delete, uri)
         {
@@ -155,7 +180,8 @@ internal class RabbitMQService
             Redelivered: new(reDeliverGetCount, reDeliverGetRate),
             Published: new(publishCount, publishRate),
             Messages: new(messageCount, messageCountRate),
-            DateTimeOffset.UtcNow); ;
+            DateTimeOffset.UtcNow);
+        ;
     }
 
     public async Task<ICollection<QueueInfo>> GetRabbitAllQueueInfoAsync(CancellationToken cancellationToken)

@@ -7,6 +7,7 @@ using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ValidateEdgeCreation;
 
@@ -19,8 +20,9 @@ internal class ValidateEdgeOperation : RawCluesOperation<ValidateEdgeCreationOpt
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
         IHttpClientFactory httpClientFactory,
+        IProbeService probeService,
         EdgeExporter edgeExporter)
-        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory, probeService)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         EdgeExporter = edgeExporter ?? throw new ArgumentNullException(nameof(edgeExporter));

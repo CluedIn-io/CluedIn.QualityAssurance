@@ -5,6 +5,7 @@ using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 using CluedIn.QualityAssurance.Cli.Services;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
 
@@ -16,8 +17,9 @@ internal class RawCluesOperation : RawCluesOperation<RawCluesOptions>
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
-        IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProbeService probeService)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory, probeService)
     {
     }
 }
@@ -31,8 +33,9 @@ internal abstract class RawCluesOperation<TOptions> : ClueSendingOperation<TOpti
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
-        IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProbeService probeService)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory, probeService)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

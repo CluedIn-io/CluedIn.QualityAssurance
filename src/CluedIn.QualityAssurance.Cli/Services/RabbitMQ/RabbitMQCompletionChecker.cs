@@ -14,7 +14,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private ILogger<RabbitMQCompletionChecker> Logger { get; }
 
-    private RabbitMQService RabbitMQService { get; }
+    private IRabbitMQService RabbitMQService { get; }
 
     private List<string> ObservedQueueRegexes { get; } = new ()
     {
@@ -43,7 +43,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     private Dictionary<string, QueueHistory> ForceIncludeQueues { get; set; } = new ();
 
-    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, RabbitMQService rabbitMQService)
+    public RabbitMQCompletionChecker(ILogger<RabbitMQCompletionChecker> logger, IRabbitMQService rabbitMQService)
     {
         RabbitMQService = rabbitMQService ?? throw new ArgumentNullException(nameof(rabbitMQService));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));

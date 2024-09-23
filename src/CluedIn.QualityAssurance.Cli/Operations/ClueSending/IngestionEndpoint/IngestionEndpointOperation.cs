@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 
@@ -22,8 +23,9 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
-        IHttpClientFactory httpClientFactory)
-        : base (logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProbeService probeService)
+        : base (logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory, probeService)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

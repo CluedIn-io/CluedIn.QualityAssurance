@@ -42,15 +42,19 @@
     },
     "Directory File Upload Local": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --local -n 1 -t 20 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
+      "commandLineArgs": "file-upload --local -n 1 -t 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --log-level Debug --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
     },
     "Directory File Upload Kubernetes": {
       "commandName": "Project",
-      "commandLineArgs": "file-upload --kubernetes -n 5 -t 20 --server-url \"https://app.52.164.206.51.sslip.io/\" --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --context-name \"aks-kte6aieghijw2\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\testblobstore.kube.config\" --milliseconds-after-vocabulary-key-creation 837 --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-level Debug --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
+      "commandLineArgs": "file-upload --kubernetes -n 20 -t 20 --server-url \"https://app.52.164.206.51.sslip.io/\" --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --context-name \"aks-kte6aieghijw2\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\testblobstore.kube.config\" --milliseconds-after-vocabulary-key-creation 837 --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --log-level Debug --log-file C:\\temp\\mylog.txt --create-subdirectory-for-output"
     },
     "Directory Ingestion Endpoint Local": {
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --local -n 1 --input-directory \"C:\\temp\\qatool\\input\" --output-directory c:\\temp\\qatool\\output --allowed-post-operation-actions \"EntitiesCountAssertionAction\" --use-short-test-id"
+    },
+    "Clean Environment Kubernetes": {
+      "commandName": "Project",
+      "commandLineArgs": "clean-test-environment --kubernetes --server-url \"https://app.52.164.206.51.sslip.io/\" --context-name \"aks-kte6aieghijw2\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\testblobstore.kube.config\" --log-level Debug --log-file C:\\temp\\mylog.txt"
     },
     "Show Help": {
       "commandName": "Project",

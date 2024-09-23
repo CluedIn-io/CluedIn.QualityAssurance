@@ -8,6 +8,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
+using System.Text.Json;
+using System.Collections.Generic;
 
 namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 
@@ -16,6 +19,10 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 {
     protected const string ApplicationJsonContentType = "application/json";
     private static readonly TimeSpan DelayBeforeOperation = TimeSpan.FromSeconds(1);
+    private static readonly JsonSerializerOptions HeaderSerializerOptions = new JsonSerializerOptions
+    {
+        WriteIndented = true,
+    };
 
     public ClueSendingOperation(
         ILogger<ClueSendingOperation<TOptions>> logger,
@@ -23,7 +30,8 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProbeService probeService)
         : base(logger)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -32,6 +40,7 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         CompletionChecker = rabbitMQCompletionChecker ?? throw new ArgumentNullException(nameof(rabbitMQCompletionChecker));
         PostOperationActions = postOperationActions ?? throw new ArgumentNullException(nameof(postOperationActions));
         HttpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        ProbeService = probeService ?? throw new ArgumentNullException(nameof(probeService));
     }
 
     private ILogger<ClueSendingOperation<TOptions>> Logger { get; }
@@ -49,6 +58,8 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
     private SingleIterationOperationResult? PreIngestionResult { get; set; }
 
     protected IHttpClientFactory HttpClientFactory { get; }
+
+    private IProbeService ProbeService { get; }
 
     protected override async Task SetUpOperationAsync(CancellationToken cancellationToken)
     {
@@ -99,6 +110,7 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 
     protected override async Task<SingleIterationOperationResult> ExecuteIterationAsync(int iterationNumber, CancellationToken cancellationToken)
     {
+        var startTime = DateTimeOffset.UtcNow;
         try
         {
             await SetOrganizationAsync(iterationNumber);
@@ -109,7 +121,6 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         }
 
         using var scope = Logger.BeginScope(CreateIterationScope(Organization.ClientId));
-
         try
         {
             return await ExecuteIterationInternalAsync(Options.IsReingestion, cancellationToken).ConfigureAwait(false);
@@ -143,6 +154,8 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
             Logger.LogError(ex, "An exception has occurred while trying to perform test run.");
             var result = new SingleIterationOperationResult
             {
+                StartTime = startTime,
+                EndTime = DateTimeOffset.UtcNow,
                 HasErrors = true,
                 Error = ex.Message + System.Environment.NewLine + ex.StackTrace
             };
@@ -180,30 +193,36 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         var operations = await GetSetupOperationsAsync(isReingestion, cancellationToken).ConfigureAwait(false);
         await ExecuteSetupOperationsAsync(operations, cancellationToken).ConfigureAwait(false);
 
+        await ProbeService.InitializeAsync(cancellationToken).ConfigureAwait(false);
         await CompletionChecker.InitializeAsync(cancellationToken).ConfigureAwait(false);
         result.StartTime = DateTimeOffset.UtcNow;
 
         using var ingestionCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var timeoutTask = Task.Delay(TimeSpan.FromMinutes(Options.TimeoutInMinutes), cancellationToken);
         var completionCheckerTask = CompletionChecker.PollForCompletionAsync(ingestionCancellationTokenSource.Token);
-        var testRunTask = Task.WhenAll(ExecuteIngestionAsync(ingestionCancellationTokenSource.Token), completionCheckerTask);
+        var probeTask = ProbeService.PollUntilCancellationAsync(ingestionCancellationTokenSource.Token);
+        var testRunTask = Task.WhenAll(ExecuteIngestionAsync(ingestionCancellationTokenSource.Token), completionCheckerTask);//, probeTask);
 
+        var hasTimedOut = false;
         if (await Task.WhenAny(timeoutTask, testRunTask).ConfigureAwait(false) == timeoutTask)
         {
-            result.HasTimedOut = true;
-            result.EndTime = DateTimeOffset.UtcNow;
+            hasTimedOut = true;
             Logger.LogWarning("Time out waiting for completion.");
-            await ingestionCancellationTokenSource.CancelAsync();
         }
         else
         {
-            var completionCheckerResult = await completionCheckerTask.ConfigureAwait(false);
-            result.EndTime = completionCheckerResult.EndTime;
-            result.QueuePollingHistory = completionCheckerResult.QueuePollingHistory;
             Logger.LogInformation("Successfully waited for completion. Test ran from {Start} to {End}.", result.StartTime, result.EndTime);
         }
 
-        PopulateQueueStats(result, await completionCheckerTask.ConfigureAwait(false), cancellationToken);
+        ingestionCancellationTokenSource.Cancel();
+        var completionCheckerResult = await completionCheckerTask.ConfigureAwait(false);
+        var probeResults = await probeTask.ConfigureAwait(false);
+        result.HasTimedOut = hasTimedOut;
+        result.QueuePollingHistory = completionCheckerResult.QueuePollingHistory;
+        result.Probes = probeResults.ToList();
+        result.EndTime = hasTimedOut ? DateTimeOffset.UtcNow : completionCheckerResult.EndTime;
+
+        PopulateQueueStats(result, completionCheckerResult, cancellationToken);
         await CustomizeResultAsync(result, cancellationToken).ConfigureAwait(false);
         result.MemoryStatistics.After = await Environment.GetAvailableMemoryInMegabytesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -213,26 +232,47 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         }
         else
         {
-            Logger.LogInformation("Running post operation actions with allowed list {AllowedList}.", Options.AllowedPostOperationActions);
-            foreach (var current in PostOperationActions)
+            try
             {
-                // TODO: Create a http client to login automatically
-                await LoginAsync(cancellationToken);
-                var currentActionName = current.GetType().Name;
-                if (Options.AllowedPostOperationActions != null && Options.AllowedPostOperationActions.Any()
-                    && !Options.AllowedPostOperationActions.Contains(currentActionName))
-                {
-                    Logger.LogInformation("Skipping post operation actions {PostOperationActionName} because it's not in allowed list.", currentActionName);
-                    continue;
-                }
-
-                Logger.LogInformation("Running post operation actions {PostOperationActionName}.", currentActionName);
-                await current.ExecuteAsync(result, cancellationToken).ConfigureAwait(false);
+                await RunPostOperationActions(result, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error performing post oepration actions.");
             }
         }
 
         Logger.LogInformation("Finished processing result for {Organization}.", Organization?.ClientId);
         return result;
+    }
+
+    private async Task RunPostOperationActions(SingleIterationOperationResult result, CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("Running post operation actions with allowed list {AllowedList}.", Options.AllowedPostOperationActions);
+        
+        foreach (var current in PostOperationActions)
+        {
+            // TODO: Create a http client to login automatically
+            await LoginAsync(cancellationToken);
+            var currentActionName = current.GetType().Name;
+            if (Options.AllowedPostOperationActions != null && Options.AllowedPostOperationActions.Any()
+                && !Options.AllowedPostOperationActions.Contains(currentActionName))
+            {
+                Logger.LogInformation("Skipping post operation actions {PostOperationActionName} because it's not in allowed list.", currentActionName);
+                continue;
+            }
+
+            try
+            {
+                Logger.LogInformation("Begin running post operation actions {PostOperationActionName}.", currentActionName);
+                await current.ExecuteAsync(result, cancellationToken).ConfigureAwait(false);
+                Logger.LogInformation("End running post operation actions {PostOperationActionName}.", currentActionName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error running post operation actions {PostOperationActionName}.", currentActionName);
+            }
+        }
     }
 
     protected virtual Task CustomizeResultAsync(SingleIterationOperationResult result, CancellationToken cancellationToken) => Task.CompletedTask;
@@ -429,7 +469,15 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         if (!suppressDebug && (requestMessage.Content is StringContent || requestMessage.Content is FormUrlEncodedContent))
         {
             var requestContent = await requestMessage.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            Logger.LogDebug("Making request to {Uri} with {Content}.", requestMessage.RequestUri, requestContent);
+            var headersWithRedactedAuthorization = GetHeaderWithRedactedAuthorization(requestMessage);
+            Logger.LogDebug("""
+                        Making request to {Uri}
+                        {Headers}
+                        {Content}
+                        """,
+                        requestMessage.RequestUri,
+                        SerializeHeaders(headersWithRedactedAuthorization),
+                        requestContent);
         }
         else
         {
@@ -441,7 +489,14 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (!suppressDebug)
         {
-            Logger.LogDebug("Got response from request to {Uri} {Content}", requestMessage.RequestUri, content);
+            Logger.LogDebug("""
+                        Got response from request to {Uri}
+                        {Headers}
+                        {Content}
+                        """,
+                        requestMessage.RequestUri,
+                        SerializeHeaders(response.Headers),
+                        content);
         }
 
         if (!response.IsSuccessStatusCode && throwIfNotSuccessCode)
@@ -449,6 +504,28 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
             throw new InvalidOperationException("Failed to perform request successfully.");
         }
         return response;
+    }
+
+    private static string SerializeHeaders(IEnumerable<KeyValuePair<string, IEnumerable<string>>> headers)
+    {
+        var simplified = headers.ToDictionary(kvp => kvp.Key, kvp => string.Join(",", kvp.Value));
+        return JsonSerializer.Serialize(simplified, HeaderSerializerOptions);
+    }
+
+    private Dictionary<string, IEnumerable<string>> GetHeaderWithRedactedAuthorization(HttpRequestMessage requestMessage)
+    {
+        var headersWithRedactedAuthorization = new Dictionary<string, IEnumerable<string>>();
+        foreach (var kvp in requestMessage.Headers)
+        {
+            if (kvp.Key == "Authorization" && kvp.Value.Count() == 1 && kvp.Value.SingleOrDefault() == $"Bearer {Organization?.AccessToken}")
+            {
+                headersWithRedactedAuthorization.Add("Authorization", ["Bearer [Redacted]"]);
+                continue;
+            }
+            headersWithRedactedAuthorization.Add(kvp.Key, kvp.Value);
+        }
+
+        return headersWithRedactedAuthorization;
     }
 
     protected async Task SubmitSampleClueAsync(CancellationToken cancellationToken)

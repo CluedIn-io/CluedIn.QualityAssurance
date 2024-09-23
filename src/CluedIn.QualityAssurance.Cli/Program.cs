@@ -17,6 +17,7 @@ using Serilog;
 using Serilog.Events;
 using CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
 using Serilog.Core;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
 
 namespace CluedIn.QualityAssurance.Cli;
 
@@ -177,11 +178,7 @@ internal class Program
 
     private static IServiceCollection AddClueSendingOperations(IServiceCollection services, object options)
     {
-        if (options is not IClueSendingOperationOptions organizationOptions)
-        {
-            return services;
-        }
-
+        var hasEnvironment = AddEnvironmentOptions(services, options);
         services
             .AddHttpClient()
             .AddHttpClient(Constants.AllowUntrustedSSLClient)
@@ -191,31 +188,41 @@ internal class Program
 
             });
         services.AddTransient<IRabbitMQCompletionChecker, RabbitMQCompletionChecker>();
-        services.AddTransient<RabbitMQService>();
+        services.AddTransient<IRabbitMQService, RabbitMQService>();
+        services.AddTransient<IProbeService, ProbeService>();
 
-        AddEnvironmentOptions(services, organizationOptions);
+        if (options is not IClueSendingOperationOptions organizationOptions)
+        {
+            return services;
+        }
+
+        if (!hasEnvironment)
+        {
+            throw new NotSupportedException("One of the environment must be set.");
+        }
+
         AddResultWriters(services);
         AddPostOperationActions(services, organizationOptions);
         return services;
     }
 
-    private static void AddEnvironmentOptions(IServiceCollection services, IClueSendingOperationOptions options)
+    private static bool AddEnvironmentOptions(IServiceCollection services, object options)
     {
-
         if (options is IKubernetesEnvironmentOptions kubernetesOptions && kubernetesOptions.IsKubernetesEnvironment)
         {
             services.AddSingleton<IEnvironment, KubernetesEnvironment>();
             services.AddTransient(_ => Options.Create(kubernetesOptions));
+            return true;
         }
         else if(options is ILocalEnvironmentOptions localOptions && localOptions.IsLocalEnvironment)
         {
             services.AddTransient<IEnvironment, LocalEnvironment>();
             services.AddTransient(_ => Options.Create(localOptions));
+            return true;
         }
-        else
-        {
-            throw new NotSupportedException("One of the environment must be set.");
-        }
+
+        return false;
+
     }
 
     private static void AddResultWriters(IServiceCollection services)

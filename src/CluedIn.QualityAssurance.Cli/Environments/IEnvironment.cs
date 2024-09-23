@@ -17,4 +17,5 @@ internal interface IEnvironment
 
     Task<ServerUriCollection> GetServerUriCollectionAsync(CancellationToken cancellationToken);
     Task<string> GetNewAccountAccessKeyAsync(CancellationToken cancellationToken);
+    Task<ProbeResult> ProbeAsync(CancellationToken cancellationToken);
 }

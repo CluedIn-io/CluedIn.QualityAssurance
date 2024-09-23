@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Models.Operations;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
+using CluedIn.QualityAssurance.Cli.Services.Probes;
 using CluedIn.QualityAssurance.Cli.Services.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Services.ResultWriters;
 
@@ -40,8 +41,9 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
         IEnumerable<IResultWriter> resultWriters,
         IRabbitMQCompletionChecker rabbitMQCompletionChecker,
         IEnumerable<IPostOperationAction> postOperationActions,
-        IHttpClientFactory httpClientFactory)
-        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProbeService probeService)
+        : base(logger, testEnvironment, resultWriters, rabbitMQCompletionChecker, postOperationActions, httpClientFactory, probeService)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
