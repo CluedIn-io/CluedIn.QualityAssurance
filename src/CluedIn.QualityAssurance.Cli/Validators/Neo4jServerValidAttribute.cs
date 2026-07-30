@@ -8,7 +8,7 @@ internal class Neo4jServerValidAttribute : ValidationAttributeBase
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var options = value as ILocalNeo4jOptions;
+        var options = value as INeo4jEndpointOptions;
         if (options == null)
         {
             return ValidationResult.Success;

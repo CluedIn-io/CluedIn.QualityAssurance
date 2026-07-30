@@ -2,7 +2,7 @@
 
 namespace CluedIn.QualityAssurance.Cli.Environments;
 
-internal interface ILocalNeo4jOptions
+internal interface INeo4jEndpointOptions
 {
     [Option("neo4j-bolt-uri", Default = "bolt://localhost:7687", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "Neo4j Bolt Uri.")]
     string Neo4jBoltUri { get; set; }
@@ -14,7 +14,7 @@ internal interface ILocalNeo4jOptions
     string Neo4jUserPassword { get; set; }
 }
 
-internal interface ILocalRabbitMqOptions
+internal interface IRabbitMqEndpointOptions
 {
     [Option("rabbitmq-management-uri", Default = "http://localhost:15672/", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ Management Uri. If credentials are required, it should NOT be included.")]
     string RabbitMQManagementUri { get; set; }
@@ -25,7 +25,8 @@ internal interface ILocalRabbitMqOptions
     [Option("rabbitmq-password", Default = "cluedin", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "RabbitMQ password.")]
     string RabbitUserPassword { get; set; }
 }
-internal interface ILocalSqlServerOptions
+
+internal interface ISqlServerEndpointOptions
 {
     [Option("sqlserver-host", Default = "localhost", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "Sql Server host.")]
     string SqlServerHost { get; set; }
@@ -40,7 +41,7 @@ internal interface ILocalSqlServerOptions
     string SqlServerUserPassword { get; set; }
 }
 
-internal interface ILocalElasticSearchOptions
+internal interface IElasticSearchEndpointOptions
 {
     [Option("elasticsearch-uri", Default = "http://localhost:9200", Required = false, SetName = nameof(ILocalEnvironmentOptions), HelpText = "Elastic Search Uri.")]
     string ElasticSearchUri { get; set; }
@@ -52,7 +53,7 @@ internal interface ILocalElasticSearchOptions
     string ElasticSearchUserPassword { get; set; }
 }
 
-internal interface ILocalCluedInServerOptions
+internal interface ICluedInServerEndpointOptions
 {
     [Option("auth-api-url", Default = "http://localhost:9001/", SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn Server Auth API Uri.")]
     string AuthApiUrl { get; set; }
@@ -73,7 +74,12 @@ internal interface ILocalCluedInServerOptions
     string NewAccountAccessKey { get; set; }
 }
 
-internal interface ILocalEnvironmentOptions : ILocalNeo4jOptions, ILocalRabbitMqOptions, ILocalSqlServerOptions, ILocalElasticSearchOptions, ILocalCluedInServerOptions
+internal interface ILocalEnvironmentOptions
+    : INeo4jEndpointOptions
+    , IRabbitMqEndpointOptions
+    , ISqlServerEndpointOptions
+    , IElasticSearchEndpointOptions
+    , ICluedInServerEndpointOptions
 {
     [Option("local", SetName = nameof(ILocalEnvironmentOptions), HelpText = "Determines that this is a CluedIn in local environment.")]
     public bool IsLocalEnvironment { get; set; }

@@ -8,7 +8,7 @@ internal class ElasticSearchServerValidAttribute : ValidationAttributeBase
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var options = value as ILocalElasticSearchOptions;
+        var options = value as IElasticSearchEndpointOptions;
         if (options == null)
         {
             return ValidationResult.Success;

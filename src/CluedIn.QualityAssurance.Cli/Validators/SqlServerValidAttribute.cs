@@ -8,7 +8,7 @@ internal class SqlServerValidAttribute : ValidationAttributeBase
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var options = value as ILocalSqlServerOptions;
+        var options = value as ISqlServerEndpointOptions;
         if (options == null)
         {
             return ValidationResult.Success;

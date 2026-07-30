@@ -1,10 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.Json;
+
 using CluedIn.QualityAssurance.Cli.Models.ElasticSearch;
 using CluedIn.QualityAssurance.Cli.Models.Neo4j;
 using CluedIn.QualityAssurance.Cli.Models.RabbitMQ;
 using CluedIn.QualityAssurance.Cli.Models.SqlServer;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,6 +15,7 @@ namespace CluedIn.QualityAssurance.Cli.Environments;
 
 internal class KubernetesEnvironment : IEnvironment
 {
+    private const string ServiceOverrideAnnotationKey = "cluedin/overrides";
     private static readonly TimeSpan PortForwardConnectionAliveInterval = TimeSpan.FromMinutes(30);
     private static readonly Dictionary<string, ServiceSettings> Settings = new()
     {
@@ -146,7 +150,10 @@ internal class KubernetesEnvironment : IEnvironment
         return itemProbeResults;
     }
 
-    private async Task<T> GetOrCreateConnectionInfoAsync<T>(string name, Func<string, string, PortForwardResult, T> createConnectionInfoFunc, CancellationToken cancellationToken)
+    private async Task<T> GetOrCreateConnectionInfoAsync<T>(
+        string name,
+        Func<string, string, PortForwardResult, Dictionary<string, string>, T> createConnectionInfoFunc,
+        CancellationToken cancellationToken)
         where T : class
     {
         if (TryGetConnectionInfo<T>(name, out var foundConnectionInfo, out var settings))
@@ -154,16 +161,93 @@ internal class KubernetesEnvironment : IEnvironment
             return foundConnectionInfo;
         }
 
+        var serviceOverrides = new Dictionary<string, string>();
+        if (Options.Value.ShouldCheckForServiceOverrides)
+        {
+            serviceOverrides = await GetServiceOverridesAsync(settings.ServiceName, cancellationToken);
+        }
+        else
+        {
+            Logger.LogDebug("Skipping checking overrides for service {serviceName}' because override checking is disabled.", name);
+        }
+
         var result = await PortForwardAsync(settings.ServiceName, settings.Port, cancellationToken);
         var password = await GetPasswordAsync(settings.SecretName, settings.PasswordField, cancellationToken);
 
-        var connectionInfo = createConnectionInfoFunc(settings.UserName, password, result);
+        var connectionInfo = createConnectionInfoFunc(settings.UserName, password, result, serviceOverrides);
         Connections.Add(name, new ConnectionInfo
         (
             Process: result.Process,
             Info: connectionInfo
         ));
         return connectionInfo;
+    }
+
+    private async Task<Dictionary<string, string>> GetServiceOverridesAsync(string serviceName, CancellationToken cancellationToken)
+    {
+        Logger.LogDebug("Checking overrides for service {serviceName}'.", serviceName);
+        var runner = new KubectlRunner();
+        var arguments = new string[]
+        {
+            "get",
+            $"services/{serviceName}",
+            "-o json"
+        };
+        var result = await runner.RunAsync(
+            Directory.GetCurrentDirectory(),
+            AppendEnvironmentDetails(arguments),
+            cancellationToken).ConfigureAwait(false);
+
+        var response = result.Output.DeserializeToAnonymousType(new
+        {
+            metadata = new
+            {
+                annotations = (Dictionary<string, string>?)null,
+            }
+        });
+
+        if (response?.metadata?.annotations == null
+            || !response.metadata.annotations.TryGetValue(ServiceOverrideAnnotationKey, out var overrideSecretName)
+            || string.IsNullOrWhiteSpace(overrideSecretName))
+        {
+            Logger.LogInformation("No override found for {ServiceName}.", serviceName);
+            return new Dictionary<string, string>();
+        }
+
+        Logger.LogDebug("Retrieving override secret '{secretName}'.", overrideSecretName);
+        var getoverrideArguments = new string[]
+        {
+            "get",
+            $"secrets/{overrideSecretName}",
+            "-o json"
+        };
+        var overrideSecretResult = await runner.RunAsync(
+            Directory.GetCurrentDirectory(),
+            AppendEnvironmentDetails(getoverrideArguments),
+            cancellationToken).ConfigureAwait(false);
+
+        var overrideSecretResponse = overrideSecretResult.Output.DeserializeToAnonymousType(new
+        {
+            data = (Dictionary<string, string>?)null,
+        });
+
+        if (overrideSecretResponse?.data == null)
+        {
+            throw new InvalidOperationException($"Override data is null for secret {overrideSecretName}.");
+        }
+
+        var decodedOverrides = overrideSecretResponse.data.ToDictionary(kvp => kvp.Key, kvp => Encoding.UTF8.GetString(Convert.FromBase64String(kvp.Value)));
+
+        Logger.LogDebug($$"""
+                    Using overrides for service {ServiceName}
+                    {Overrides}
+                    """,
+                    serviceName,
+                    JsonSerializer.Serialize(decodedOverrides, new JsonSerializerOptions()
+                    {
+                        WriteIndented = true,
+                    }));
+        return decodedOverrides;
     }
 
     private async Task<T> GetConnectionInfoAsync<T>(string name, CancellationToken cancellationToken)
@@ -210,7 +294,7 @@ internal class KubernetesEnvironment : IEnvironment
 
         _ = await GetOrCreateConnectionInfoAsync(
             nameof(RabbitMQConnectionInfo),
-            (userName, password, portForwardResult) => new RabbitMQConnectionInfo
+            (userName, password, portForwardResult, overrides) => new RabbitMQConnectionInfo
             {
                 ManagementUri = new Uri($"http://{portForwardResult.Uri}"),
                 Password = password,
@@ -220,7 +304,7 @@ internal class KubernetesEnvironment : IEnvironment
 
         _ = await GetOrCreateConnectionInfoAsync(
             nameof(Neo4jConnectionInfo),
-            (userName, password, portForwardResult) => new Neo4jConnectionInfo
+            (userName, password, portForwardResult, overrides) => new Neo4jConnectionInfo
             (
                 BoltUri: new Uri($"bolt://{portForwardResult.Uri}"),
                 UserName: userName,
@@ -230,7 +314,7 @@ internal class KubernetesEnvironment : IEnvironment
 
         _ = await GetOrCreateConnectionInfoAsync(
             nameof(ElasticSearchConnectionInfo),
-            (userName, password, portForwardResult) => new ElasticSearchConnectionInfo
+            (userName, password, portForwardResult, overrides) => new ElasticSearchConnectionInfo
             (
                 ServerUri: new Uri($"http://{portForwardResult.Uri}"),
                 UserName: userName,
@@ -241,15 +325,37 @@ internal class KubernetesEnvironment : IEnvironment
 
         _ = await GetOrCreateConnectionInfoAsync(
             nameof(SqlServerConnectionInfo),
-            (userName, password, portForwardResult) => {
-                var temp = new Uri($"tcp://{portForwardResult.Uri}");
-                return new SqlServerConnectionInfo
-                (
-                    Host: temp.Host,
-                    Port: temp.Port,
-                    UserName: userName,
-                    Password: password
-                );
+            (userName, password, portForwardResult, overrides) => {
+                if (!overrides.Any())
+                {
+                    var temp = new Uri($"tcp://{portForwardResult.Uri}");
+                    return new SqlServerConnectionInfo
+                    (
+                        Host: temp.Host,
+                        Port: temp.Port,
+                        UserName: userName,
+                        Password: password
+                    );
+                }
+                else
+                {
+                    if (!overrides.TryGetValue("Host", out var overrideHost)
+                    || !overrides.TryGetValue("Port", out var overridePortString)
+                    || !int.TryParse(overridePortString, out var overridePort)
+                    || !overrides.TryGetValue("UserName", out var overrideUserName)
+                    || !overrides.TryGetValue("Password", out var overridePassword))
+                    {
+                        throw new InvalidOperationException($"Invalid override '{JsonSerializer.Serialize(overrides)}'.");
+                    }
+
+                    return new SqlServerConnectionInfo
+                    (
+                        Host: overrideHost,
+                        Port: overridePort,
+                        UserName: overrideUserName,
+                        Password: overridePassword
+                    );
+                }
             },
             cancellationToken);
 

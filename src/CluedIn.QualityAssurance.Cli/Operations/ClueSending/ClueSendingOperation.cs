@@ -190,6 +190,8 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
             Organization = Organization,
         };
 
+        await CompletionChecker.ValidateIdleAsync(cancellationToken).ConfigureAwait(false);
+
         var operations = await GetSetupOperationsAsync(isReingestion, cancellationToken).ConfigureAwait(false);
         await ExecuteSetupOperationsAsync(operations, cancellationToken).ConfigureAwait(false);
 
@@ -208,6 +210,15 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
         {
             hasTimedOut = true;
             Logger.LogWarning("Time out waiting for completion.");
+            try
+            {
+                await CompletionChecker.PurgeAllQueuesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception purgeException)
+            {
+                Logger.LogWarning(purgeException,"Failed to purge all queues.");
+            }
+
         }
         else
         {

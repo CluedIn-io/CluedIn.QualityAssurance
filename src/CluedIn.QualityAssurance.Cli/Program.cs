@@ -18,6 +18,7 @@ using Serilog.Events;
 using CluedIn.QualityAssurance.Cli.Operations.ClueSending.RawClues;
 using Serilog.Core;
 using CluedIn.QualityAssurance.Cli.Services.Probes;
+using CluedIn.QualityAssurance.Cli.Operations.Monitoring;
 
 namespace CluedIn.QualityAssurance.Cli;
 
@@ -189,6 +190,7 @@ internal class Program
             });
         services.AddTransient<IRabbitMQCompletionChecker, RabbitMQCompletionChecker>();
         services.AddTransient<IRabbitMQService, RabbitMQService>();
+        services.AddTransient<RabbitMqProbeService>();
         services.AddTransient<IProbeService, ProbeService>();
 
         if (options is not IClueSendingOperationOptions organizationOptions)

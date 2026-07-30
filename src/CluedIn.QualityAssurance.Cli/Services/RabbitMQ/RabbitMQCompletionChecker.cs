@@ -51,6 +51,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
+        Logger.LogInformation("Begin initializing completion checker.");
         AllQueueCheckers = new ();
         ObservedQueueCheckers = new ();
         CriticalQueueCheckers = new ();
@@ -63,6 +64,81 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         {
             Logger.LogWarning(ex, "Error trying to initialize completion checker. Attempting one more time.");
             _ = await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+        }
+        Logger.LogInformation("End initializing completion checker.");
+    }
+
+    public async Task PurgeAllQueuesAsync(CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("Begin purging rabbitmq queues.");
+        var queuesInfo = await RabbitMQService.GetRabbitAllQueueInfoAsync(cancellationToken);
+        foreach (var queue in queuesInfo)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Logger.LogInformation("Aborting purging because cancellation is requested.");
+                return;
+            }
+
+            try
+            {
+                await RabbitMQService.PurgeQueueAsync(queue.QueueName, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to purge queue {QueueName}", queue.QueueName);
+            }
+        }
+        Logger.LogInformation("End purging rabbitmq.");
+    }
+
+    public async Task ValidateIdleAsync(CancellationToken cancellationToken)
+    {
+        Logger.LogInformation("Begin validation for idle rabbitmq queues.");
+        var firstInfo = await getInfo(cancellationToken).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        var secondInfo = await getInfo(cancellationToken).ConfigureAwait(false);
+
+        if (firstInfo.Count != secondInfo.Count)
+        {
+            throw new ApplicationException("Queue counts are different.");
+        }
+
+        var firstMap = firstInfo.ToDictionary(info => info.QueueName, info => info);
+        var secondMap = secondInfo.ToDictionary(info => info.QueueName, info => info);
+
+        if (firstMap.Keys.Except(secondMap.Keys).Any())
+        {
+            throw new ApplicationException("There are different queues.");
+        }
+
+        foreach (var firstKvp in firstMap)
+        {
+            var secondKvp = secondMap[firstKvp.Key];
+            var firstCount = firstKvp.Value.CurrentQueueInfo?.Messages?.Count;
+            var secondCount = secondKvp.CurrentQueueInfo?.Messages?.Count;
+
+            if (firstCount != secondCount)
+            {
+                throw new ApplicationException($"Queue count for {firstKvp.Key} are different {firstCount} vs {secondCount}.");
+            }
+        }
+
+        Logger.LogInformation("End validation for idle rabbitmq queues.");
+
+
+
+        async Task<List<QueueCheckerResult>> getInfo(CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error trying to populate queue information. Attempting one more time.");
+                return await PopulateQueueInformation(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
@@ -132,8 +208,11 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                         .Where(current => !current.IsComplete)
                         .Select(current => new PendingQueue(
                             current.ShortQueueName.Trim(),
+                            current.CurrentQueueInfo.Delivered.Count - current.HistoricalQueueInfo.First().Delivered.Count,
                             current.CurrentQueueInfo.Messages.Count,
-                            current.CurrentQueueInfo.Messages.Rate))
+                            current.CurrentQueueInfo.Messages.Rate,
+                            current.CurrentQueueInfo.Published.Rate,
+                            current.CurrentQueueInfo.Delivered.Rate))
                         .ToList();
                     Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Elapsed: {Elapsed}. Incomplete Queues {IncompleteQueues}", elapsed, CreatePendingQueueConsoleTable(pendingQueues));
                     lastShowProgressTime = utcNow;
@@ -166,21 +245,39 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
         }
     }
 
-    private record PendingQueue(string Name, uint Count, double Rate)
+    private record PendingQueue(string Name, uint ProcessedCount, uint PendingCount, double MessageRate, double PublishedRate, double DeliveredRate)
     {
-        public double EstimatedSecondsRemaining => Rate == 0.0 ? 0 : Count / Rate;
+        public double EstimatedSecondsRemaining => MessageRate == 0.0 ? 0 : PendingCount / MessageRate;
     }
 
     private string CreatePendingQueueConsoleTable(IEnumerable<PendingQueue> pendingQueues)
     {
-        var columnNames = new[] { nameof(PendingQueue.Name), nameof(PendingQueue.Count), nameof(PendingQueue.Rate), "ETA (s)" };
+        var columnNames = new[]
+        {
+            nameof(PendingQueue.Name),
+            nameof(PendingQueue.ProcessedCount),
+            nameof(PendingQueue.PendingCount),
+            nameof(PendingQueue.MessageRate),
+            nameof(PendingQueue.PublishedRate),
+            nameof(PendingQueue.DeliveredRate),
+            "ETA (s)"
+        };
 
         var table = new Table(columnNames);
 
         foreach (var queue in pendingQueues)
         {
             var eta = queue.EstimatedSecondsRemaining < 0 ? Math.Abs(queue.EstimatedSecondsRemaining).ToString("0.00") : "N/A";
-            table.AddRow(new[] { queue.Name, queue.Count.ToString(), queue.Rate.ToString("0.00"), eta });
+            table.AddRow(new[]
+            {
+                queue.Name,
+                queue.ProcessedCount.ToString(),
+                queue.PendingCount.ToString(),
+                queue.MessageRate.ToString("0.00"),
+                queue.PublishedRate.ToString("0.00"),
+                queue.DeliveredRate.ToString("0.00"),
+                eta,
+            });
         }
 
         return table.GetOutput();

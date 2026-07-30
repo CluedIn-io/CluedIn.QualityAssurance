@@ -18,4 +18,7 @@ internal interface IKubernetesEnvironmentOptions
 
     [Option("kubernetes", SetName = nameof(IKubernetesEnvironmentOptions), HelpText = "Determines that this is a CluedIn in Kubernetes environment.")]
     public bool IsKubernetesEnvironment { get; set; }
+
+    [Option("check-for-service-overrides", Default = false, SetName = nameof(IKubernetesEnvironmentOptions), HelpText = "Determine whether checking for service overrides should be done.")]
+    public bool ShouldCheckForServiceOverrides { get; set; }
 }

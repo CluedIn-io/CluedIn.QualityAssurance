@@ -7,7 +7,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ExtractEdge;
 
 [Neo4jServerValid]
 [Verb("extract-edge", HelpText = "Extract edges from organizations")]
-internal class ExtractEdgeOptions : IOperationOptions, ILocalNeo4jOptions
+internal class ExtractEdgeOptions : IOperationOptions, INeo4jEndpointOptions
 {
     #region Neo4j
     public string Neo4jBoltUri { get; set; }

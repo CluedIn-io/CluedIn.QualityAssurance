@@ -15,10 +15,10 @@ internal class LocalEnvironmentValidAttribute : ValidationAttributeBase
         }
 
         return MergeResults(
-            Validate<ILocalNeo4jOptions, Neo4jServerValidAttribute>(options),
-            Validate<ILocalRabbitMqOptions, RabbitMqServerValidAttribute>(options),
-            Validate<ILocalSqlServerOptions, SqlServerValidAttribute>(options),
-            Validate<ILocalElasticSearchOptions, ElasticSearchServerValidAttribute>(options),
-            Validate<ILocalCluedInServerOptions, CluedInServerValidAttribute>(options));
+            Validate<INeo4jEndpointOptions, Neo4jServerValidAttribute>(options),
+            Validate<IRabbitMqEndpointOptions, RabbitMqServerValidAttribute>(options),
+            Validate<ISqlServerEndpointOptions, SqlServerValidAttribute>(options),
+            Validate<IElasticSearchEndpointOptions, ElasticSearchServerValidAttribute>(options),
+            Validate<ICluedInServerEndpointOptions, CluedInServerValidAttribute>(options));
     }
 }

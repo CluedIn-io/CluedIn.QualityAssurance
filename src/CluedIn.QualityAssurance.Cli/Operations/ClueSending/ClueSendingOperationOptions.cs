@@ -89,6 +89,8 @@ internal abstract class ClueSendingOperationOptions : IClueSendingOperationOptio
 
     public bool IsKubernetesEnvironment { get; set; }
 
+    public bool ShouldCheckForServiceOverrides { get; set; }
+
     public bool SkipPostOperationActions { get; set; }
 
     public IEnumerable<string> AllowedPostOperationActions { get; set; }

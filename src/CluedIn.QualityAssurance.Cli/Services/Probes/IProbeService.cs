@@ -12,7 +12,7 @@ internal interface IProbeService
 
 internal class ProbeService : IProbeService
 {
-    private static readonly TimeSpan DelayBetweenQueuePolls = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan DelayBetweenQueuePolls = TimeSpan.FromSeconds(5);
 
     public ProbeService(ILogger<ProbeService> logger, IEnvironment environment)
     {

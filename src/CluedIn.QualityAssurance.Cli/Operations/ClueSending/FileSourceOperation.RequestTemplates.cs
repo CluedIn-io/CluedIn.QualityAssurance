@@ -15,7 +15,16 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createAnnotationCode($annotationCode: InputAnnotationCode) {              preparation {                id                createAnnotationCode(annotationCode: $annotationCode) {                  id                  __typename                }                __typename              }            }
+            mutation createAnnotationCode($annotationCode: InputAnnotationCode) {
+              preparation {
+                id
+                createAnnotationCode(annotationCode: $annotationCode) {
+                  id
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             #endregion
             return $$"""
@@ -45,7 +54,15 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {              management {                modifyBatchVocabularyClueMappingConfiguration(                  annotationId: $annotationId                  batchPropertyMappings: $batchPropertyMappings                )                __typename              }            }
+            mutation modifyBatchVocabularyClueMappingConfiguration($annotationId: ID!, $batchPropertyMappings: InputBatchPropertyMapping) {
+              management {
+                modifyBatchVocabularyClueMappingConfiguration(
+                  annotationId: $annotationId
+                  batchPropertyMappings: $batchPropertyMappings
+                )
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -250,7 +267,16 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation addEdgeMapping($annotationId: ID!, $key: String!, $edgeConfiguration: InputEdgeConfiguration) {              management {                addEdgeMapping(                  annotationId: $annotationId                  key: $key                  edgeConfiguration: $edgeConfiguration                )                __typename              }            }
+            mutation addEdgeMapping($annotationId: ID!, $key: String!, $edgeConfiguration: InputEdgeConfiguration) {
+              management {
+                addEdgeMapping(
+                  annotationId: $annotationId
+                  key: $key
+                  edgeConfiguration: $edgeConfiguration
+                )
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -288,7 +314,16 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation addPropertyMappingToCluedMappingConfiguration($dataSetId: ID!, $propertyMappingConfiguration: InputPropertyMappingConfiguration, $extra: Boolean) {              management {                addPropertyMappingToCluedMappingConfiguration(                  dataSetId: $dataSetId                  propertyMappingConfiguration: $propertyMappingConfiguration                  extra: $extra                )                __typename              }            }
+            mutation addPropertyMappingToCluedMappingConfiguration($dataSetId: ID!, $propertyMappingConfiguration: InputPropertyMappingConfiguration, $extra: Boolean) {
+              management {
+                addPropertyMappingToCluedMappingConfiguration(
+                  dataSetId: $dataSetId
+                  propertyMappingConfiguration: $propertyMappingConfiguration
+                  extra: $extra
+                )
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -321,7 +356,20 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createAutoAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {              management {                createAutoAnnotation(                  dataSetId: $dataSetId                  type: $type                  mappingConfiguration: $mappingConfiguration                  isDynamicVocab: $isDynamicVocab                ) {                  id                  __typename                }                __typename              }            }
+            mutation createAutoAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {
+              management {
+                createAutoAnnotation(
+                  dataSetId: $dataSetId
+                  type: $type
+                  mappingConfiguration: $mappingConfiguration
+                  isDynamicVocab: $isDynamicVocab
+                ) {
+                  id
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -359,7 +407,12 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {              inbound {                createDataSourceSet(dataSourceSet: $dataSourceSet)                __typename              }            }
+            mutation createDataSourceSet($dataSourceSet: InputDataSourceSet) {
+              inbound {
+                createDataSourceSet(dataSourceSet: $dataSourceSet)
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -386,7 +439,20 @@ internal abstract partial class FileSourceOperation<TOptions>
             var keysConfig = JsonSerializer.Serialize(new string[] { }); // TODO: Add Keysconfig
             #region Request
             var requestString = $$"""
-            mutation createManualAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {              management {                createManualAnnotation(                  dataSetId: $dataSetId                  type: $type                  mappingConfiguration: $mappingConfiguration                  isDynamicVocab: $isDynamicVocab                ) {                  id                  __typename                }                __typename              }            }
+            mutation createManualAnnotation($dataSetId: ID!, $type: String!, $mappingConfiguration: InputMappingConfiguration, $isDynamicVocab: Boolean) {
+              management {
+                createManualAnnotation(
+                  dataSetId: $dataSetId
+                  type: $type
+                  mappingConfiguration: $mappingConfiguration
+                  isDynamicVocab: $isDynamicVocab
+                ) {
+                  id
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -436,7 +502,14 @@ internal abstract partial class FileSourceOperation<TOptions>
             }
             """;
             var requestString = $$"""
-            mutation createEntityTypeConfigurationV2($entityTypeConfiguration: String!) {              management {                createEntityTypeConfigurationV2(                  entityTypeConfiguration: $entityTypeConfiguration                )                __typename              }            }
+            mutation createEntityTypeConfigurationV2($entityTypeConfiguration: String!) {
+              management {
+                createEntityTypeConfigurationV2(
+                  entityTypeConfiguration: $entityTypeConfiguration
+                )
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -457,7 +530,12 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation modifyAnnotation($annotation: InputEntityAnnotation) {              preparation {                modifyAnnotation(annotation: $annotation)                __typename              }            }
+            mutation modifyAnnotation($annotation: InputEntityAnnotation) {
+              preparation {
+                modifyAnnotation(annotation: $annotation)
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -481,7 +559,15 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation saveCustomOriginClueMappingConfiguration($annotationId: ID!, $customOrigin: String) {              management {                saveCustomOriginClueMappingConfiguration(                  annotationId: $annotationId                  customOrigin: $customOrigin                )                __typename              }            }
+            mutation saveCustomOriginClueMappingConfiguration($annotationId: ID!, $customOrigin: String) {
+              management {
+                saveCustomOriginClueMappingConfiguration(
+                  annotationId: $annotationId
+                  customOrigin: $customOrigin
+                )
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -503,7 +589,12 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation modifyAnnotation($annotation: InputEntityAnnotation) {              preparation {                modifyAnnotation(annotation: $annotation)                __typename              }            }
+            mutation modifyAnnotation($annotation: InputEntityAnnotation) {
+              preparation {
+                modifyAnnotation(annotation: $annotation)
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -526,10 +617,125 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            query getDataSourceById($id: ID!) {              inbound {                dataSource(id: $id) {                  id                  canBeDeleted                  name                  hasError                  latestErrorMessage                  errorType                  author {                    id                    username                    __typename                  }                  fileMetadata {                    fileName                    processing
+            query getDataSourceById($id: ID!) {
+              inbound {
+                dataSource(id: $id) {
+                  id
+                  canBeDeleted
+                  name
+                  hasError
+                  latestErrorMessage
+                  errorType
+                  author {
+                    id
+                    username
+                    __typename
+                  }
+                  fileMetadata {
+                    fileName
+                    processing
                     uploading
                     uploadedPercentage
-                    mimeType                    __typename                  }                  createdAt                  type                  dataSourceSet {                    id                    name                    __typename                  }                  sql                  connectionStatus {                    connected                    errorMessage                    __typename                  }                  dataSets {                    id                    name                    annotationId                    elasticTotal                    expectedTotal                    annotation {                      originEntityCodeKey                      annotationProperties {                        key                        __typename                      }                      __typename                    }                    stats {                      total                      successful                      failed                      __typename                    }                    author {                      id                      username                      __typename                    }                    createdAt                    updatedAt                    dataSource {                      id                      __typename                    }                    __typename                  }                  connectorConfigurationId                  connectorConfiguration {                    id                    name                    accountDisplay                    accountId                    active                    autoSync                    codeName                    configuration                    connector {                      id                      icon                      name                      authMethods                      properties                      streamModes                      __typename                    }                    createdDate                    entityId                    failingAuthentication                    guide                    helperConfiguration                    providerId                    reAuthEndpoint                    source                    sourceQuality                    stats                    status                    supportsAutomaticWebhookCreation                    supportsConfiguration                    supportsWebhooks                    userId                    userName                    users {                      id                      username                      roles                      __typename                    }                    webhookManagementEndpoints                    webhooks                    __typename                  }                  __typename                }                __typename              }            }            
+                    mimeType
+                    __typename
+                  }
+                  createdAt
+                  type
+                  dataSourceSet {
+                    id
+                    name
+                    __typename
+                  }
+                  sql
+                  connectionStatus {
+                    connected
+                    errorMessage
+                    __typename
+                  }
+                  dataSets {
+                    id
+                    name
+                    annotationId
+                    elasticTotal
+                    expectedTotal
+                    annotation {
+                      originEntityCodeKey
+                      annotationProperties {
+                        key
+                        __typename
+                      }
+                      __typename
+                    }
+                    stats {
+                      total
+                      successful
+                      failed
+                      __typename
+                    }
+                    author {
+                      id
+                      username
+                      __typename
+                    }
+                    createdAt
+                    updatedAt
+                    dataSource {
+                      id
+                      __typename
+                    }
+                    __typename
+                  }
+                  connectorConfigurationId
+                  connectorConfiguration {
+                    id
+                    name
+                    accountDisplay
+                    accountId
+                    active
+                    autoSync
+                    codeName
+                    configuration
+                    connector {
+                      id
+                      icon
+                      name
+                      authMethods
+                      properties
+                      streamModes
+                      __typename
+                    }
+                    createdDate
+                    entityId
+                    failingAuthentication
+                    guide
+                    helperConfiguration
+                    providerId
+                    reAuthEndpoint
+                    source
+                    sourceQuality
+                    stats
+                    status
+                    supportsAutomaticWebhookCreation
+                    supportsConfiguration
+                    supportsWebhooks
+                    userId
+                    userName
+                    users {
+                      id
+                      username
+                      roles
+                      __typename
+                    }
+                    webhookManagementEndpoints
+                    webhooks
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }
+            
             """;
             #endregion
 
@@ -549,7 +755,46 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            query getAllVocabularies($searchName: String, $isActive: Boolean, $pageNumber: Int, $pageSize: Int, $sortBy: String, $sortDirection: String, $entityType: String, $connectorId: ID, $filterTypes: Int, $filterHasNoSource: Boolean) {              management {                id                vocabularies(                  searchName: $searchName                  isActive: $isActive                  pageNumber: $pageNumber                  pageSize: $pageSize                  sortBy: $sortBy                  sortDirection: $sortDirection                  entityType: $entityType                  connectorId: $connectorId                  filterTypes: $filterTypes                  filterHasNoSource: $filterHasNoSource                ) {                  total                  data {                    vocabularyId                    vocabularyName                    keyPrefix                    isCluedInCore                    isDynamic                    isProvider                    isActive                    grouping                    createdAt                    connector {                      id                      name                      about                      icon                      __typename                    }                    __typename                  }                  __typename                }                __typename              }            }
+            query getAllVocabularies($searchName: String, $isActive: Boolean, $pageNumber: Int, $pageSize: Int, $sortBy: String, $sortDirection: String, $entityType: String, $connectorId: ID, $filterTypes: Int, $filterHasNoSource: Boolean) {
+              management {
+                id
+                vocabularies(
+                  searchName: $searchName
+                  isActive: $isActive
+                  pageNumber: $pageNumber
+                  pageSize: $pageSize
+                  sortBy: $sortBy
+                  sortDirection: $sortDirection
+                  entityType: $entityType
+                  connectorId: $connectorId
+                  filterTypes: $filterTypes
+                  filterHasNoSource: $filterHasNoSource
+                ) {
+                  total
+                  data {
+                    vocabularyId
+                    vocabularyName
+                    keyPrefix
+                    isCluedInCore
+                    isDynamic
+                    isProvider
+                    isActive
+                    grouping
+                    createdAt
+                    connector {
+                      id
+                      name
+                      about
+                      icon
+                      __typename
+                    }
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             #endregion
 
@@ -577,7 +822,44 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createVocabulary($vocabulary: InputVocabulary) {              management {                id                createVocabulary(vocabulary: $vocabulary) {                  ...Vocabulary                  __typename                }                __typename              }            }            fragment Vocabulary on Vocabulary {              vocabularyId              vocabularyName              keyPrefix              isCluedInCore              entityTypeConfiguration {                icon                entityType                displayName                __typename              }              isDynamic              isProvider              isActive              grouping              createdAt              providerId              description              connector {                id                name                about                icon                __typename              }              __typename            }
+            mutation createVocabulary($vocabulary: InputVocabulary) {
+              management {
+                id
+                createVocabulary(vocabulary: $vocabulary) {
+                  ...Vocabulary
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment Vocabulary on Vocabulary {
+              vocabularyId
+              vocabularyName
+              keyPrefix
+              isCluedInCore
+              entityTypeConfiguration {
+                icon
+                entityType
+                displayName
+                __typename
+              }
+              isDynamic
+              isProvider
+              isActive
+              grouping
+              createdAt
+              providerId
+              description
+              connector {
+                id
+                name
+                about
+                icon
+                __typename
+              }
+              __typename
+            }
             """;
             #endregion
 
@@ -611,7 +893,80 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            mutation createVocabulary($vocabularyKey: InputVocabularyKey) {              management {                id                createVocabularyKey(vocabularyKey: $vocabularyKey) {                  ...VocabularyKey                  __typename                }                __typename              }            }            fragment VocabularyKey on VocabularyKey {              displayName              vocabularyKeyId              vocabularyId              name              isVisible              isCluedInCore              isDynamic              isProvider              isObsolete              groupName              key              storage              dataClassificationCode              dataType              description              dataAnnotationsIsPrimaryKey              dataAnnotationsIsEditable              dataAnnotationsIsNullable              dataAnnotationsIsRequired              dataAnnotationsMinimumLength              dataAnnotationsMaximumLength              providerId              compositeVocabularyId              compositeVocabulary {                name                displayName                dataType                __typename              }              mapsToOtherKeyId              glossaryTermId              createdAt              createdBy              mappedKey              isValueChangeInsignificant              connector {                id                name                about                icon                type                __typename              }              vocabulary {                vocabularyId                vocabularyName                connector {                  id                  name                  about                  icon                  __typename                }                __typename              }              author {                id                username                __typename              }              __typename            }
+            mutation createVocabulary($vocabularyKey: InputVocabularyKey) {
+              management {
+                id
+                createVocabularyKey(vocabularyKey: $vocabularyKey) {
+                  ...VocabularyKey
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment VocabularyKey on VocabularyKey {
+              displayName
+              vocabularyKeyId
+              vocabularyId
+              name
+              isVisible
+              isCluedInCore
+              isDynamic
+              isProvider
+              isObsolete
+              groupName
+              key
+              storage
+              dataClassificationCode
+              dataType
+              description
+              dataAnnotationsIsPrimaryKey
+              dataAnnotationsIsEditable
+              dataAnnotationsIsNullable
+              dataAnnotationsIsRequired
+              dataAnnotationsMinimumLength
+              dataAnnotationsMaximumLength
+              providerId
+              compositeVocabularyId
+              compositeVocabulary {
+                name
+                displayName
+                dataType
+                __typename
+              }
+              mapsToOtherKeyId
+              glossaryTermId
+              createdAt
+              createdBy
+              mappedKey
+              isValueChangeInsignificant
+              connector {
+                id
+                name
+                about
+                icon
+                type
+                __typename
+              }
+              vocabulary {
+                vocabularyId
+                vocabularyName
+                connector {
+                  id
+                  name
+                  about
+                  icon
+                  __typename
+                }
+                __typename
+              }
+              author {
+                id
+                username
+                __typename
+              }
+              __typename
+            }
             """;
             #endregion
 
@@ -640,10 +995,42 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestStringWithoutPageTemplate = $$"""
-            query getEntityTypeInfo($type: String!) {              management {                getEntityTypeInfo(type: $type) {                  id                  icon                  displayName                  type                  route                  path                  active                  layoutConfiguration                  pageTemplateId                  __typename                }                __typename              }            }
+            query getEntityTypeInfo($type: String!) {
+              management {
+                getEntityTypeInfo(type: $type) {
+                  id
+                  icon
+                  displayName
+                  type
+                  route
+                  path
+                  active
+                  layoutConfiguration
+                  pageTemplateId
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             var requestStringWithPageTemplate = $$"""
-            query getEntityTypeInfo($type: String!) {              management {                getEntityTypeInfo(type: $type, includePageTemplate: false) {                  id                  icon                  displayName                  type                  route                  path                  active                  layoutConfiguration                  pageTemplateId                  __typename                }                __typename              }            }
+            query getEntityTypeInfo($type: String!) {
+              management {
+                getEntityTypeInfo(type: $type, includePageTemplate: false) {
+                  id
+                  icon
+                  displayName
+                  type
+                  route
+                  path
+                  active
+                  layoutConfiguration
+                  pageTemplateId
+                  __typename
+                }
+                __typename
+              }
+            }
             """;
             var requestString = withPageTemplate ? requestStringWithPageTemplate : requestStringWithoutPageTemplate;
             #endregion
@@ -663,7 +1050,90 @@ internal abstract partial class FileSourceOperation<TOptions>
         {
             #region Request
             var requestString = $$"""
-            query getVocabularyKeysFromVocabularyId($id: ID!, $searchName: String, $dataType: String, $classification: String, $filterIsObsolete: String) {              management {                id                vocabularyKeysFromVocabularyId(                  id: $id                  searchName: $searchName                  dataType: $dataType                  classification: $classification                  filterIsObsolete: $filterIsObsolete                ) {                  total                  data {                    ...VocabularyKey                    __typename                  }                  __typename                }                __typename              }            }            fragment VocabularyKey on VocabularyKey {              displayName              vocabularyKeyId              vocabularyId              name              isVisible              isCluedInCore              isDynamic              isProvider              isObsolete              groupName              key              storage              dataClassificationCode              dataType              description              dataAnnotationsIsPrimaryKey              dataAnnotationsIsEditable              dataAnnotationsIsNullable              dataAnnotationsIsRequired              dataAnnotationsMinimumLength              dataAnnotationsMaximumLength              providerId              compositeVocabularyId              compositeVocabulary {                name                displayName                dataType                __typename              }              mapsToOtherKeyId              glossaryTermId              createdAt              createdBy              mappedKey              isValueChangeInsignificant              connector {                id                name                about                icon                type                __typename              }              vocabulary {                vocabularyId                vocabularyName                connector {                  id                  name                  about                  icon                  __typename                }                __typename              }              author {                id                username                __typename              }              __typename            }
+            query getVocabularyKeysFromVocabularyId($id: ID!, $searchName: String, $dataType: String, $classification: String, $filterIsObsolete: String) {
+              management {
+                id
+                vocabularyKeysFromVocabularyId(
+                  id: $id
+                  searchName: $searchName
+                  dataType: $dataType
+                  classification: $classification
+                  filterIsObsolete: $filterIsObsolete
+                ) {
+                  total
+                  data {
+                    ...VocabularyKey
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment VocabularyKey on VocabularyKey {
+              displayName
+              vocabularyKeyId
+              vocabularyId
+              name
+              isVisible
+              isCluedInCore
+              isDynamic
+              isProvider
+              isObsolete
+              groupName
+              key
+              storage
+              dataClassificationCode
+              dataType
+              description
+              dataAnnotationsIsPrimaryKey
+              dataAnnotationsIsEditable
+              dataAnnotationsIsNullable
+              dataAnnotationsIsRequired
+              dataAnnotationsMinimumLength
+              dataAnnotationsMaximumLength
+              providerId
+              compositeVocabularyId
+              compositeVocabulary {
+                name
+                displayName
+                dataType
+                __typename
+              }
+              mapsToOtherKeyId
+              glossaryTermId
+              createdAt
+              createdBy
+              mappedKey
+              isValueChangeInsignificant
+              connector {
+                id
+                name
+                about
+                icon
+                type
+                __typename
+              }
+              vocabulary {
+                vocabularyId
+                vocabularyName
+                connector {
+                  id
+                  name
+                  about
+                  icon
+                  __typename
+                }
+                __typename
+              }
+              author {
+                id
+                username
+                __typename
+              }
+              __typename
+            }
             """;
             #endregion
 

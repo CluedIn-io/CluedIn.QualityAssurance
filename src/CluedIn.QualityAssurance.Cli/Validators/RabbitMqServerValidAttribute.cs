@@ -8,7 +8,7 @@ internal class RabbitMqServerValidAttribute : ValidationAttributeBase
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var options = value as ILocalRabbitMqOptions;
+        var options = value as IRabbitMqEndpointOptions;
         if (options == null)
         {
             return ValidationResult.Success;

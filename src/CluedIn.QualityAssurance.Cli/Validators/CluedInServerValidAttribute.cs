@@ -8,7 +8,7 @@ internal class CluedInServerValidAttribute : ValidationAttributeBase
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        var options = value as ILocalCluedInServerOptions;
+        var options = value as ICluedInServerEndpointOptions;
         if (options == null)
         {
             return ValidationResult.Success;

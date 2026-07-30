@@ -491,7 +491,7 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
 
 
     protected async Task<Guid?> GetEntityTypeInfoAsync(string entityType, CancellationToken cancellationToken)
-    {        
+    {
         var (json, errors) = await GetEntityTypeInfoAsync(entityType, UseGetEntityTypeInfoWithTemplate, cancellationToken).ConfigureAwait(false);
 
         if (UseGetEntityTypeInfoWithTemplate && errors.Any() && errors.Any(error => error.Message != null && error.Message.Contains("Unknown argument")))
@@ -861,7 +861,7 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
                 {
                     management = new
                     {
-                        createVocabulary = new 
+                        createVocabulary = new
                         {
                             vocabularyId = (Guid?)null,
                         }
@@ -1317,7 +1317,7 @@ internal abstract partial class FileSourceOperation<TOptions> : ClueSendingOpera
                     {
                         errors = (GraphQLError[]?)null,
                     }, options) ?? throw new InvalidOperationException("Invalid result because it is empty.");
-                
+
         return (json,  result.errors ?? Array.Empty<GraphQLError>());
     }
 

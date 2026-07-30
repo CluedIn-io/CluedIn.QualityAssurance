@@ -7,7 +7,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.VerifyEdge;
 
 [Neo4jServerValid]
 [Verb("verify-edge", HelpText = "Verify edges from clues directory with edges in Neo4j")]
-internal class VerifyEdgeOptions : IOperationOptions, ILocalNeo4jOptions
+internal class VerifyEdgeOptions : IOperationOptions, INeo4jEndpointOptions
 {
     public string Neo4jBoltUri { get; set; }
 
