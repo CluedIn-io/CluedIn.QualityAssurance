@@ -121,7 +121,7 @@ internal class PersistHashAssertion : IPostOperationAction
             while (true)
             {
                 var parameters = new { result.Organization.OrganizationId, start, pageSize };
-                var entities = await connection.QueryAsync<Entity>(query, parameters).ConfigureAwait(false);
+                var entities = await connection.QueryAsync<EntityBase>(query, parameters).ConfigureAwait(false);
                 foreach (var entity in entities)
                 {
                     var response = await httpClient.GetFromJsonAsync<EntityResponse>(new Uri(uris.WebApiUri, $"api/entity?id={entity.Id}&full=true"), cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -206,7 +206,8 @@ internal class PersistHashAssertion : IPostOperationAction
         return allEntities.ToDictionary(entity => entity.Id, entity => entity.PersistHash);
     }
 
-    public record Entity(string Id, string PersistHash);
+    public record EntityBase(string Id);
+    public record Entity(string Id, string? PersistHash) : EntityBase(Id);
 
     public class EntityResponse
     {

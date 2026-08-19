@@ -24,13 +24,25 @@
       "commandName": "Project",
       "commandLineArgs": "file-upload --kubernetes --server-url \"https://127.0.0.1.nip.io\" -n 2 --context-name \"minikube\" --namespace \"cluedin\" --output-directory c:\\temp\\qatool\\output --log-level Debug"
     },
+    "File Upload PlatformQA": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --kubernetes --server-url \"https://app.platformqa.cluedin-test.online\" -n 1 --context-name \"platformqa-aks\" --namespace \"cluedin\" --output-directory D:\\temp\\qatool-new\\output --log-level Debug --kubeconfig-path=\"D:\\kubeconfig\\platformqa.kube.config\""
+    },
     "Ingestion Endpoint Local": {
       "commandName": "Project",
-      "commandLineArgs": "ingestion-endpoint --local -n 1 --output-directory c:\\temp\\qatool\\output --log-level \"Debug\""
+      "commandLineArgs": "ingestion-endpoint --local -n 10 --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\""
+    },
+    "Ingestion Endpoint Local Existing Org": {
+      "commandName": "Project",
+      "commandLineArgs": "ingestion-endpoint --local -n 5 --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" -u admin@foobar.com -p Foobar23! -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\orders-10000.csv\" --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
     },
     "Ingestion Endpoint Kubernetes": {
       "commandName": "Project",
       "commandLineArgs": "ingestion-endpoint --kubernetes --server-url \"https://127.0.0.1.nip.io\" -n 2 --context-name \"minikube\" --namespace \"default\" --output-directory c:\\temp\\qatool\\output"
+    },
+    "Ingestion Endpoint Kubernetes Existing Org": {
+      "commandName": "Project",
+      "commandLineArgs": "ingestion-endpoint --kubernetes --server-url \"https://app.platformqa.cluedin-test.online\" -n 3 -u admin@foobar.com -p CluedInAccess03! -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\products-10000.csv\" --context-name \"platformqa-aks\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\platformqa.kube.config\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output"
     },
     "Re-ingestion Endpoint Local": {
       "commandName": "Project",

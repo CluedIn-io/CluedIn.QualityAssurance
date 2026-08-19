@@ -323,41 +323,41 @@ internal class KubernetesEnvironment : IEnvironment
             cancellationToken);
 
 
-        _ = await GetOrCreateConnectionInfoAsync(
-            nameof(SqlServerConnectionInfo),
-            (userName, password, portForwardResult, overrides) => {
-                if (!overrides.Any())
-                {
-                    var temp = new Uri($"tcp://{portForwardResult.Uri}");
-                    return new SqlServerConnectionInfo
-                    (
-                        Host: temp.Host,
-                        Port: temp.Port,
-                        UserName: userName,
-                        Password: password
-                    );
-                }
-                else
-                {
-                    if (!overrides.TryGetValue("Host", out var overrideHost)
-                    || !overrides.TryGetValue("Port", out var overridePortString)
-                    || !int.TryParse(overridePortString, out var overridePort)
-                    || !overrides.TryGetValue("UserName", out var overrideUserName)
-                    || !overrides.TryGetValue("Password", out var overridePassword))
-                    {
-                        throw new InvalidOperationException($"Invalid override '{JsonSerializer.Serialize(overrides)}'.");
-                    }
+        //_ = await GetOrCreateConnectionInfoAsync(
+            //nameof(SqlServerConnectionInfo),
+            //(userName, password, portForwardResult, overrides) => {
+            //    if (!overrides.Any())
+            //    {
+            //        var temp = new Uri($"tcp://{portForwardResult.Uri}");
+            //        return new SqlServerConnectionInfo
+            //        (
+            //            Host: temp.Host,
+            //            Port: temp.Port,
+            //            UserName: userName,
+            //            Password: password
+            //        );
+            //    }
+            //    else
+            //    {
+            //        if (!overrides.TryGetValue("Host", out var overrideHost)
+            //        || !overrides.TryGetValue("Port", out var overridePortString)
+            //        || !int.TryParse(overridePortString, out var overridePort)
+            //        || !overrides.TryGetValue("UserName", out var overrideUserName)
+            //        || !overrides.TryGetValue("Password", out var overridePassword))
+            //        {
+            //            throw new InvalidOperationException($"Invalid override '{JsonSerializer.Serialize(overrides)}'.");
+            //        }
 
-                    return new SqlServerConnectionInfo
-                    (
-                        Host: overrideHost,
-                        Port: overridePort,
-                        UserName: overrideUserName,
-                        Password: overridePassword
-                    );
-                }
-            },
-            cancellationToken);
+            //        return new SqlServerConnectionInfo
+            //        (
+            //            Host: overrideHost,
+            //            Port: overridePort,
+            //            UserName: overrideUserName,
+            //            Password: overridePassword
+            //        );
+            //    }
+            //},
+            //cancellationToken);
 
         NewAccountAccessKey = await GetNewAccountAccessKeyInternalAsync(cancellationToken).ConfigureAwait(false);
         SetupTime = DateTimeOffset.UtcNow;
@@ -479,7 +479,8 @@ internal class KubernetesEnvironment : IEnvironment
             PublicApiUri: new Uri(serverUrlWithTrailingSlash, "public/"),
             WebApiUri: new Uri(serverUrlWithTrailingSlash, "api/"),
             UiGraphqlUri: new Uri(serverUrlWithTrailingSlash, "graphql/"),
-            UploadApiUri: new Uri(serverUrlWithTrailingSlash, "upload/")
+            UploadApiUri: new Uri(serverUrlWithTrailingSlash, "upload/"),
+            IngestApiUri: new Uri(serverUrlWithTrailingSlash, "ingest/")
             ));
     }
 

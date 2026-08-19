@@ -21,6 +21,8 @@ internal class MonitorEnvironmentOptions : IOperationOptions, ILocalEnvironmentO
 
     public string UploadApiUrl { get; set; }
 
+    public string IngestApiUrl { get; set; }
+
     public string ServerUrl { get; set; }
 
     public string NewAccountAccessKey { get; set; }

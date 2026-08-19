@@ -129,7 +129,7 @@ internal class ValidateEdgeOperation : RawCluesOperation<ValidateEdgeCreationOpt
         Organization = new Organization
         {
             ClientId = clientId,
-            Password = Options.Password,
+            Password = Options.UserPassword,
             UserName = $"{Options.UserName}@{clientId}.com",
             EmailDomain = $"{clientId}.com",
         };

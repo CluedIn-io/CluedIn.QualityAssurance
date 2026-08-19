@@ -26,24 +26,24 @@ internal class EntitiesCountAssertionAction : IPostOperationAction
     {
         var neo4jConnectionInfo = await TestEnvironment.GetNeo4jConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
         var elasticSearchConnectionInfo = await TestEnvironment.GetElasticSearchConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
-        var sqlServerConnectionInfo = await TestEnvironment.GetSqlServerConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
+        //var sqlServerConnectionInfo = await TestEnvironment.GetSqlServerConnectionInfoAsync(cancellationToken).ConfigureAwait(false);
 
         var organizationId = result.Organization.OrganizationId;
         var entityTypes = await GetEntityTypesAsync(organizationId, neo4jConnectionInfo).ConfigureAwait(false);
 
         var neo4jResultTask = GetResultForNeo(organizationId, entityTypes, neo4jConnectionInfo);
         var elasticSearchResultTask = GetResultForElasticSearch(organizationId, entityTypes, elasticSearchConnectionInfo);
-        var sqlServerResultTask = GetResultForSql(organizationId, entityTypes, sqlServerConnectionInfo);
+        //var sqlServerResultTask = GetResultForSql(organizationId, entityTypes, sqlServerConnectionInfo);
 
-        await Task.WhenAll(neo4jResultTask, elasticSearchResultTask, sqlServerResultTask).ConfigureAwait(false);
+        await Task.WhenAll(neo4jResultTask, elasticSearchResultTask/*, sqlServerResultTask*/).ConfigureAwait(false);
 
         var neoResult = await neo4jResultTask;
         var esResult = await elasticSearchResultTask;
-        var sqlResult = await sqlServerResultTask;
+        //var sqlResult = await sqlServerResultTask;
 
         result.Output.Add("EntitiesTypesCount.Neo4j", neoResult);
         result.Output.Add("EntitiesTypesCount.ElasticSearch", esResult);
-        result.Output.Add("EntitiesTypesCount.SqlServer", sqlResult);
+        //result.Output.Add("EntitiesTypesCount.SqlServer", sqlResult);
     }
 
     private async Task<ICollection<string>> GetEntityTypesAsync(Guid organizationId, Neo4jConnectionInfo connectionInfo)

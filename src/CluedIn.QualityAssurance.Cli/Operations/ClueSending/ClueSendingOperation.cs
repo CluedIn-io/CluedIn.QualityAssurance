@@ -260,7 +260,7 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
     private async Task RunPostOperationActions(SingleIterationOperationResult result, CancellationToken cancellationToken)
     {
         Logger.LogInformation("Running post operation actions with allowed list {AllowedList}.", Options.AllowedPostOperationActions);
-        
+
         foreach (var current in PostOperationActions)
         {
             // TODO: Create a http client to login automatically
@@ -312,11 +312,26 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
     protected virtual Task CreateOperationData(int iterationNumber)
     {
         var testId = CreateTestId(iterationNumber);
+        if (Options.UseExistingOrganization)
+        {
+            Logger.LogInformation("Using existing organization with organization name {OrganizationName} and test id {TestId}.", Options.OrganizationName, testId);
+
+            Organization = new Organization
+            {
+                ClientId = Options.OrganizationName,
+                Password = Options.UserPassword,
+                UserName = Options.UserName,
+                EmailDomain = $"{Options.OrganizationName}.com",
+            };
+
+            return Task.CompletedTask;
+        }
+
         var clientId = Options.ClientIdPrefix + testId;
         Organization = new Organization()
         {
             ClientId = clientId,
-            Password = Options.Password,
+            Password = Options.UserPassword,
             UserName = $"{Options.UserName}@{clientId}.com",
             EmailDomain = $"{clientId}.com",
         };
@@ -349,6 +364,12 @@ internal abstract partial class ClueSendingOperation<TOptions> : MultiIterationO
 
     protected virtual async Task CreateOrganizationAsync(CancellationToken cancellationToken)
     {
+        if (Options.UseExistingOrganization)
+        {
+            Logger.LogInformation("Using existing organization with organization name {OrganizationName}.", Options.OrganizationName);
+            return;
+        }
+
         var newAccountAccessKey = await Environment.GetNewAccountAccessKeyAsync(cancellationToken).ConfigureAwait(false);
         var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
         var requestUri = new Uri(serverUris.AuthApiUri, "api/account/new");

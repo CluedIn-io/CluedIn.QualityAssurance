@@ -5,4 +5,5 @@ internal record ServerUriCollection(
     Uri PublicApiUri,
     Uri WebApiUri,
     Uri UiGraphqlUri,
-    Uri UploadApiUri);
+    Uri UploadApiUri,
+    Uri IngestApiUri);

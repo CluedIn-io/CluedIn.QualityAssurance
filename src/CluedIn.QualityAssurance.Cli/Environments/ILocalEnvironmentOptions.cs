@@ -70,8 +70,8 @@ internal interface ICluedInServerEndpointOptions
     [Option("upload-api-url", Default = "http://localhost:8888/upload", SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn Upload API Uri.")]
     string UploadApiUrl { get; set; }
 
-    [Option("new-account-access-key", Default = null, SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn New Account Access Key.")]
-    string NewAccountAccessKey { get; set; }
+    [Option("ingest-api-url", Default = "http://localhost:5757/ingest", SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn Ingest API Uri.")]
+    string IngestApiUrl { get; set; }
 }
 
 internal interface ILocalEnvironmentOptions
@@ -83,4 +83,7 @@ internal interface ILocalEnvironmentOptions
 {
     [Option("local", SetName = nameof(ILocalEnvironmentOptions), HelpText = "Determines that this is a CluedIn in local environment.")]
     public bool IsLocalEnvironment { get; set; }
+
+    [Option("new-account-access-key", Default = null, SetName = nameof(ILocalEnvironmentOptions), HelpText = "CluedIn New Account Access Key.")]
+    string NewAccountAccessKey { get; set; }
 }

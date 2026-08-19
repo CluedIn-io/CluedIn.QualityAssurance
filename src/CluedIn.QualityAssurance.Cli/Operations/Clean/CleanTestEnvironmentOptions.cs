@@ -9,6 +9,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.Clean;
 [Verb("clean-test-environment", HelpText = "Clean test environments")]
 internal class CleanTestEnvironmentOptions : ICleanTestEnvironmentOptions, ILocalEnvironmentOptions, IKubernetesEnvironmentOptions
 {
+    public string NewAccountAccessKey { get; set; }
     #region CluedInServer
     public string AuthApiUrl { get; set; }
 
@@ -20,9 +21,9 @@ internal class CleanTestEnvironmentOptions : ICleanTestEnvironmentOptions, ILoca
 
     public string UploadApiUrl { get; set; }
 
-    public string ServerUrl { get; set; }
+    public string IngestApiUrl { get; set; }
 
-    public string NewAccountAccessKey { get; set; }
+    public string ServerUrl { get; set; }
     #endregion
 
     #region Kubernetes

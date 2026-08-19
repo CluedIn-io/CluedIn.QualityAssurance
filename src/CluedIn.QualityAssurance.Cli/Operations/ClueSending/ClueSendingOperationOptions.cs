@@ -8,6 +8,17 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending;
 [KubernetesEnvironmentValid]
 internal abstract class ClueSendingOperationOptions : IClueSendingOperationOptions, ILocalEnvironmentOptions, IKubernetesEnvironmentOptions
 {
+    #region Organization
+    public bool UseExistingOrganization { get; set; }
+
+    public string OrganizationName { get; set; }
+
+    public string UserName { get; set; }
+
+    public string UserPassword { get; set; }
+
+    public string NewAccountAccessKey { get; set; }
+    #endregion
     #region CluedInServer
     public string AuthApiUrl { get; set; }
 
@@ -19,17 +30,13 @@ internal abstract class ClueSendingOperationOptions : IClueSendingOperationOptio
 
     public string UploadApiUrl { get; set; }
 
-    public string ServerUrl { get; set; }
+    public string IngestApiUrl { get; set; }
 
-    public string NewAccountAccessKey { get; set; }
+    public string ServerUrl { get; set; }
     #endregion
 
 
     public string ClientIdPrefix { get; set; }
-
-    public string UserName { get; set; }
-
-    public string Password { get; set; }
 
     public int TotalIterations { get; set; }
 

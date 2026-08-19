@@ -9,6 +9,7 @@ namespace CluedIn.QualityAssurance.Cli.Operations.Clean;
 [Verb("purge-queues", HelpText = "Purge queues")]
 internal class PurgeRabbitMqQueuesOptions : IOperationOptions, ILocalEnvironmentOptions, IKubernetesEnvironmentOptions
 {
+    public string NewAccountAccessKey { get; set; }
     #region CluedInServer
     public string AuthApiUrl { get; set; }
 
@@ -20,9 +21,9 @@ internal class PurgeRabbitMqQueuesOptions : IOperationOptions, ILocalEnvironment
 
     public string UploadApiUrl { get; set; }
 
-    public string ServerUrl { get; set; }
+    public string IngestApiUrl { get; set; }
 
-    public string NewAccountAccessKey { get; set; }
+    public string ServerUrl { get; set; }
     #endregion
 
     #region Kubernetes

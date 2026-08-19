@@ -96,7 +96,8 @@ internal class LocalEnvironment : IEnvironment
             PublicApiUri: EnsureTrailingSlash(new Uri(Options.Value.PublicApiUrl)),
             WebApiUri: EnsureTrailingSlash(new Uri(Options.Value.WebApiUrl)),
             UiGraphqlUri: EnsureTrailingSlash(new Uri(Options.Value.UiGraphqlUrl)),
-            UploadApiUri: EnsureTrailingSlash(new Uri(Options.Value.UploadApiUrl))
+            UploadApiUri: EnsureTrailingSlash(new Uri(Options.Value.UploadApiUrl)),
+            IngestApiUri: EnsureTrailingSlash(new Uri(Options.Value.IngestApiUrl))
             ));
     }
 

@@ -153,7 +153,7 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
             try
             {
                 var serverUris = await GetServerUris(cancellationToken).ConfigureAwait(false);
-                var requestUri = new Uri(serverUris.UploadApiUri, $"api/endpoint/{fileSource.DataSetId}");
+                var requestUri = new Uri(serverUris.IngestApiUri, $"api/endpoint/{fileSource.DataSetId}");
 
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
                 {
