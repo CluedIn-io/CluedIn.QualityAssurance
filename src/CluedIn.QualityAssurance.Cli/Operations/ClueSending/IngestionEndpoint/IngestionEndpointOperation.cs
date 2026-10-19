@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using CluedIn.QualityAssurance.Cli.Environments;
 using CluedIn.QualityAssurance.Cli.Services.PostOperationActions;
@@ -17,6 +18,8 @@ namespace CluedIn.QualityAssurance.Cli.Operations.ClueSending.IngestionEndpoint;
 
 internal partial class IngestionEndpointOperation : FileSourceOperation<IngestionEndpointOptions>
 {
+    private Channel<List<Dictionary<string, string>>>? _sendingChannel;
+
     public IngestionEndpointOperation(
         ILogger<IngestionEndpointOperation> logger,
         IEnvironment testEnvironment,
@@ -67,6 +70,7 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
 
     private async Task StreamAllToIngestionEndpointAsync(CancellationToken cancellationToken)
     {
+        _sendingChannel = Channel.CreateUnbounded<List<Dictionary<string, string>>>();
         foreach (var fileSource in FileSources)
         {
             await StreamToIngestionEndpointAsync(fileSource, cancellationToken).ConfigureAwait(false);
@@ -77,7 +81,6 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
     {
         var fileName = Path.GetFileName(fileSource.UploadFilePath);
         Logger.LogInformation("Begin streaming {FileName} to ingestion endpoint.", fileName);
-
         var batchSize = Options.IngestionBatchSize;
         var fileStream = GetUploadFileStream(fileSource);
         using var streamReader = new StreamReader(fileStream);
@@ -88,7 +91,10 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
         csv.Context.RegisterClassMap<MyClassWithDictionaryMapper>();
 
         var batch = new List<Dictionary<string, string>>(batchSize);
-        var totalSent = 0;
+
+        var random = new Random();
+        var sendTasks = Enumerable.Range(0, Options.TotalIngestionSenders)
+            .Select(id => ProcessIngestionEndpointBatches(id, random.Next(1000), fileSource, cancellationToken));
         try
         {
             await foreach (var currentRecord in csv.GetRecordsAsync<CsvRow>())
@@ -101,21 +107,8 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
                 batch.Add(currentRecord.Columns);
                 if (batch.Count == batchSize)
                 {
-                    var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-                    if (success)
-                    {
-                        totalSent += batchSize;
-                        Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Failed to send batch. Ignoring batch.");
-                    }
-                    batch.Clear();
-                    if (Options.IngestionRequestsDelayInMilliseconds > 0)
-                    {
-                        await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken).ConfigureAwait(false);
-                    }
+                    await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+                    batch = new List<Dictionary<string, string>>(batchSize);
                 }
             }
         }
@@ -127,19 +120,44 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
         if (batch.Count > 0)
         {
             Logger.LogInformation("Sending last batch of rows.");
-            var success = await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
-            if (success)
-            {
-                totalSent += batch.Count;
-                Logger.LogDebug("Total rows sent {TotalSent}.", totalSent);
-            }
-            batch.Clear();
+            await SendBatchToIngestionEndpointAsync(fileSource, batch, cancellationToken).ConfigureAwait(false);
+            batch = new List<Dictionary<string, string>>(batchSize);
         }
+
+        _sendingChannel.Writer.Complete();
+        var totalSentValues = await Task.WhenAll(sendTasks).ConfigureAwait(false);
+        var totalSent = totalSentValues.Sum();
         Logger.LogInformation("Finished streaming {FileName} to ingestion endpoint. Total Rows sent {TotalSent}", fileName, totalSent);
     }
 
-    private async Task<bool> SendBatchToIngestionEndpointAsync(FileSource fileSource, List<Dictionary<string, string>> batch, CancellationToken cancellationToken)
+    private async Task SendBatchToIngestionEndpointAsync(FileSource fileSource, List<Dictionary<string, string>> batch, CancellationToken cancellationToken)
     {
+        await _sendingChannel.Writer.WriteAsync(batch, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<int> ProcessIngestionEndpointBatches(int senderId, int delayMilliseconds, FileSource fileSource, CancellationToken cancellationToken)
+    {
+        var totalSent = 0;
+        var batchSize = Options.IngestionBatchSize;
+        Logger.LogDebug("[{SenderId}] Starting ingestion endpoint sender with delay {DelayMilliseconds} ms", senderId, delayMilliseconds);
+        await Task.Delay(delayMilliseconds).ConfigureAwait(false);
+
+        while (await _sendingChannel.Reader.WaitToReadAsync(cancellationToken))
+        {
+            var batch = await _sendingChannel.Reader.ReadAsync(cancellationToken);
+            totalSent = await SendBatchToIngestionEndpointInternalAsync(senderId, fileSource, batch, totalSent, cancellationToken).ConfigureAwait(false);
+            if (Options.IngestionRequestsDelayInMilliseconds > 0)
+            {
+                await Task.Delay(Options.IngestionRequestsDelayInMilliseconds, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return totalSent;
+    }
+
+    private async Task<int> SendBatchToIngestionEndpointInternalAsync(int senderId, FileSource fileSource, List<Dictionary<string, string>> batch, int totalSent, CancellationToken cancellationToken)
+    {
+
         var totalRetries = 10;
         var delayBetweenRetries = TimeSpan.FromSeconds(2);
         for (var i = 0; i < totalRetries; ++i)
@@ -147,7 +165,7 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
             if (cancellationToken.IsCancellationRequested)
             {
                 Logger.LogInformation("Aborting streaming of batch because cancellation is requested.");
-                return false;
+                break;
             }
 
             try
@@ -172,20 +190,25 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
 
                 if (result.success.GetValueOrDefault())
                 {
-                    Logger.LogDebug("Successfully streamed batch of size {BatchSize}.", batch.Count);
-                    return true;
+                    totalSent += batch.Count;
+                    Logger.LogDebug("[{SenderId}] Successfully streamed batch of size {BatchSize}. Total rows sent {TotalSent}", senderId, batch.Count, totalSent);
+                    break;
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Error trying to send to ingestion endpoint. retrying in a while.");
+                if (i == totalRetries - 1)
+                {
+                    Logger.LogError(ex, "[{SenderId}] Failed to send batch after {TotalRetries} attempts. Ignoring", senderId, totalRetries);
+                    throw;
+                }
+                Logger.LogWarning(ex, "[{SenderId}] Error trying to send to ingestion endpoint. retrying in a while.", senderId);
                 await Task.Delay(delayBetweenRetries, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        return false;
+        return totalSent;
     }
-
 
     private async Task<List<Dictionary<string, string>>> GetSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
@@ -278,7 +301,8 @@ internal partial class IngestionEndpointOperation : FileSourceOperation<Ingestio
     private async Task SendSampleDataAsync(FileSource fileSource, CancellationToken cancellationToken)
     {
         var sampleData = await GetSampleDataAsync(fileSource, cancellationToken).ConfigureAwait(false);
-        await SendBatchToIngestionEndpointAsync(fileSource, sampleData, cancellationToken).ConfigureAwait(false);
+        //await SendBatchToIngestionEndpointAsync(fileSource, sampleData, cancellationToken).ConfigureAwait(false);
+        await SendBatchToIngestionEndpointInternalAsync(0, fileSource, sampleData, 0, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ModifyDataSetAutoSubmitAsync(FileSource fileSource, CancellationToken cancellationToken)

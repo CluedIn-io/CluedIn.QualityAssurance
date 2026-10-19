@@ -10,6 +10,9 @@ internal interface IIngestionEndpointOptions : IFileSourceOperationOptions
     [Option("ingestion-batch-size", Default = 200, Required = false, HelpText = "Ingestion batch size.")]
     int IngestionBatchSize { get; set; }
 
+    [Option("total-ingestion-senders", Default = 2, Required = false, HelpText = "Total number of ingestion endpoint senders.")]
+    int TotalIngestionSenders { get; set; }
+
     [Option("delay-between-ingestion-requests", Default = 500, Required = false, HelpText = "The delay between multiple requests to ingestion endpoint, in milliseconds.")]
     int IngestionRequestsDelayInMilliseconds { get; set; }
 }

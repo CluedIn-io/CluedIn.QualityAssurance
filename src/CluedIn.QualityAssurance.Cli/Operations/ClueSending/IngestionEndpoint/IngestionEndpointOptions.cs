@@ -9,5 +9,7 @@ internal class IngestionEndpointOptions : FileSourceOperationOptions, IIngestion
 
     public int IngestionBatchSize { get; set; }
 
+    public int TotalIngestionSenders { get; set; }
+
     public int IngestionRequestsDelayInMilliseconds { get; set; }
 }

@@ -20,6 +20,22 @@
       "commandName": "Project",
       "commandLineArgs": "file-upload --local -n 2 --output-directory c:\\temp\\qatool\\output"
     },
+    "File Upload Local 3": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --local -n 1 -u admin@foobar.com -p P@ssword!123 -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\Lookup\\Cars.csv\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
+    "File Upload Kubernetes 3": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --kubernetes -t 30 --server-url \"https://app.127.0.0.1.nip.io\" -n 1 -u admin@foobar.com -p P@ssword!123 -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\orders-10000.csv\" --context-name \"docker-desktop\" --namespace \"cluedin\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
+    "File Upload Kubernetes 4": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --kubernetes -t 30 --server-url \"https://app.127.0.0.1.nip.io\" -n 1 -u admin@foobar.com -p P@ssword!123 -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\Lookup\\Cars.csv\" --context-name \"docker-desktop\" --namespace \"cluedin\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
+    "File Upload Kubernetes 5": {
+      "commandName": "Project",
+      "commandLineArgs": "file-upload --kubernetes -t 30 --server-url \"https://app.127.0.0.1.nip.io\" -n 1 -u admin@foobar.com -p P@ssword!123 -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\orders-10000.csv\" --context-name \"docker-desktop\" --namespace \"cluedin\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
     "File Upload Kubernetes": {
       "commandName": "Project",
       "commandLineArgs": "file-upload --kubernetes --server-url \"https://127.0.0.1.nip.io\" -n 2 --context-name \"minikube\" --namespace \"cluedin\" --output-directory c:\\temp\\qatool\\output --log-level Debug"
@@ -42,7 +58,15 @@
     },
     "Ingestion Endpoint Kubernetes Existing Org": {
       "commandName": "Project",
-      "commandLineArgs": "ingestion-endpoint --kubernetes --server-url \"https://app.platformqa.cluedin-test.online\" -n 3 -u admin@foobar.com -p CluedInAccess03! -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\products-10000.csv\" --context-name \"platformqa-aks\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\platformqa.kube.config\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output"
+      "commandLineArgs": "ingestion-endpoint --kubernetes -t 20 --server-url \"https://app.platformqa.cluedin-test.online\" -n 3 -u admin@foobar.com -p CluedInAccess03! -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\1million\\orders2.csv\" --context-name \"platformqa-aks\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\platformqa.kube.config\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output --delay-between-ingestion-requests 200 --ingestion-batch-size 250 --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
+    "Ingestion Endpoint Kubernetes Existing Org 2": {
+      "commandName": "Project",
+      "commandLineArgs": "ingestion-endpoint --kubernetes -t 30 --server-url \"https://app.127.0.0.1.nip.io\" -n 3 -u admin@foobar.com -p P@ssword!123 -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\100k\\orders-10000.csv\" --context-name \"docker-desktop\" --namespace \"cluedin\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output --delay-between-ingestion-requests 200 --ingestion-batch-size 250 --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
+    },
+    "Ingestion Endpoint Kubernetes Existing Org2222222222222": {
+      "commandName": "Project",
+      "commandLineArgs": "ingestion-endpoint --kubernetes -t 20 --server-url \"https://app.qa-performance01.cluedin-test.online\" -n 3 -u admin@foobar.com -p foobar123456789! -o foobar --use-existing-organization -i \"D:\\temp\\datasets\\lalala.csv\" --context-name \"aks-qa-perform-20472-dev\" --namespace \"cluedin\" --kubeconfig-path \"D:\\kubeconfig\\perftest.kube.config\" --output-directory d:\\temp\\qatool-new\\output --log-level \"Debug\" --create-subdirectory-for-output --delay-between-ingestion-requests 250 --ingestion-batch-size 200 --total-ingestion-senders 16 --allowed-post-operation-actions \"EntitiesCountAssertionAction\""
     },
     "Re-ingestion Endpoint Local": {
       "commandName": "Project",

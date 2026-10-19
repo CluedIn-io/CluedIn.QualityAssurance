@@ -25,6 +25,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
         @".*\.(IProcessingCommand).*",
+        @"(ElasticIndexing)_(.*)",
     };
 
     private List<string> ForceIncludeQueueRegexes { get; } = new()
@@ -217,9 +218,9 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                     Logger.LogInformation("Some queues message count are NOT zero or not marked as complete. Elapsed: {Elapsed}. Incomplete Queues {IncompleteQueues}", elapsed, CreatePendingQueueConsoleTable(pendingQueues));
                     lastShowProgressTime = utcNow;
                 }
-                
+
                 totalConsecutiveErrors = 0;
-            } 
+            }
             catch (Exception ex)
             {
                 ++totalConsecutiveErrors;
@@ -234,8 +235,8 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
                 else
                 {
                     Logger.LogWarning(
-                        ex, 
-                        "Tolerating error polling because number of consecutive errors ({TotalConsecutiveErrors}) is below threshold {MaximumumConsecutivePollErrors}", 
+                        ex,
+                        "Tolerating error polling because number of consecutive errors ({TotalConsecutiveErrors}) is below threshold {MaximumumConsecutivePollErrors}",
                         totalConsecutiveErrors,
                         MaximumConsecutivePollErrors);
                 }
