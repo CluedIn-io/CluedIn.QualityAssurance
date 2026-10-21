@@ -187,7 +187,10 @@ internal partial class FileUploadOperation : FileSourceOperation<FileUploadOptio
             await stream.ReadAsync(fileBuffer, 0, fileBuffer.Length);
 
             // We are using WebRequest here because the HttpWebRequest does not allow setting Content-Range in request header
-            var client = new RestClient(serverUris.UploadApiUri);
+            var client = new RestClient(new RestClientOptions(serverUris.UploadApiUri)
+            {
+                RemoteCertificateValidationCallback = (sender, certificate, chain, errors) => true,
+            });
             var request = new RestRequest("resume-upload", Method.Post);
             request.AddHeader("Content-Range", $"bytes={from}-{to}/{length}");
             request.AddHeader("Authorization", $"Bearer {Organization.AccessToken}");
