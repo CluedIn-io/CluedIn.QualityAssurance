@@ -25,7 +25,7 @@ internal class RabbitMQCompletionChecker : IRabbitMQCompletionChecker
     private List<string> CriticalQueueRegexes { get; } = new ()
     {
         @".*\.(IProcessingCommand).*",
-        @"(ElasticIndexing)_(.*)",
+        @"(DataStoreSyncing)_(.*)",
     };
 
     private List<string> ForceIncludeQueueRegexes { get; } = new()
